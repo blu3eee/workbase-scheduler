@@ -1,12 +1,14 @@
-use std::error::Error;
 use mysql::*;
 use mysql::prelude::*;
 
-use crate::models::org_members::{
-    OrgMember,
-    RequestCreateOrgMember,
-    RequestUpdateOrgMember,
-    create_org_members_table_query,
+use crate::models::{
+    org_members::{
+        OrgMember,
+        RequestCreateOrgMember,
+        RequestUpdateOrgMember,
+        create_org_members_table_query,
+    },
+    error::Result,
 };
 
 use super::BasicQueries;
@@ -24,7 +26,7 @@ impl BasicQueries for OrgMemberQueries {
         "org_members".to_string()
     }
 
-    fn create_table(conn: &mut PooledConn) -> Result<(), Box<dyn Error>> {
+    fn create_table(conn: &mut PooledConn) -> Result<()> {
         let query = create_org_members_table_query();
         let stmt = conn.prep(query)?;
         conn.exec_drop(stmt, ())?;
@@ -32,10 +34,7 @@ impl BasicQueries for OrgMemberQueries {
         Ok(())
     }
 
-    fn create_entity(
-        conn: &mut PooledConn,
-        create_dto: Self::CreateDto
-    ) -> Result<i32, Box<dyn Error>> {
+    fn create_entity(conn: &mut PooledConn, create_dto: Self::CreateDto) -> Result<i32> {
         conn.exec_drop(
             format!(
                 "INSERT INTO {} (user_id, org_id) VALUES (:user_id, :org_id)",
@@ -50,14 +49,11 @@ impl BasicQueries for OrgMemberQueries {
         Ok(conn.last_insert_id() as i32)
     }
 
-    fn update_entity(
-        _conn: &mut PooledConn,
-        _update_dto: Self::UpdateDto
-    ) -> Result<u64, Box<dyn Error>> {
+    fn update_entity(_conn: &mut PooledConn, _update_dto: Self::UpdateDto) -> Result<u64> {
         Ok(0)
     }
 
-    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64, Box<dyn Error>> {
+    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64> {
         let query_result = conn.query_iter(format!("DELETE FROM organizations WHERE id = {}", id))?;
 
         Ok(query_result.affected_rows())
@@ -69,14 +65,14 @@ mod tests {
     use chrono::NaiveDate;
 
     use super::*;
-    use crate::queries::organizations::OrganizationQueries;
+    use crate::queries::organizations::OrgQueries;
     use crate::queries::users::UserQueries;
     use crate::tests::{ initialize_test_db, cleanup_test_db };
     use crate::models::users::RequestCreateUser;
     use crate::models::organizations::RequestCreateOrganization;
 
     #[test]
-    fn test_org_member_queries() -> Result<(), Box<dyn Error>> {
+    fn test_org_member_queries() -> Result<()> {
         let mut conn = initialize_test_db()?;
 
         // Create user
@@ -90,7 +86,7 @@ mod tests {
         })?;
 
         // Create organization
-        let org_id = OrganizationQueries::create_entity(&mut conn, RequestCreateOrganization {
+        let org_id = OrgQueries::create_entity(&mut conn, RequestCreateOrganization {
             name: "Test Organization".to_string(),
             description: Some("A test organization".to_string()),
             owner_id: user_id,

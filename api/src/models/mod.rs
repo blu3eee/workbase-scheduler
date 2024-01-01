@@ -1,10 +1,11 @@
-use std::{ error::Error, str::FromStr };
+use std::str::FromStr;
 
 use chrono::{ NaiveDate, NaiveDateTime };
 use mysql::{ PooledConn, prelude::Queryable, Value };
 
-use self::users::create_users_table_query;
+use self::{ users::create_users_table_query, error::Result };
 
+pub mod error;
 pub mod users;
 pub mod organizations;
 pub mod org_members;
@@ -12,7 +13,7 @@ pub mod org_jobs;
 pub mod org_member_jobs;
 
 /// create tables
-pub async fn create_tables(mut conn: PooledConn) -> Result<(), Box<dyn Error>> {
+pub async fn create_tables(mut conn: PooledConn) -> Result<()> {
     let stmt = conn.prep(create_users_table_query())?;
     conn.exec_drop(stmt, ())?;
 

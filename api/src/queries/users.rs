@@ -1,9 +1,10 @@
-use std::error::Error;
-
 use mysql::*;
 use mysql::prelude::*;
 
-use crate::models::users::{ User, RequestCreateUser, RequestUpdateUser, create_users_table_query };
+use crate::models::{
+    users::{ User, RequestCreateUser, RequestUpdateUser, create_users_table_query },
+    error::Result,
+};
 
 use super::BasicQueries;
 
@@ -20,7 +21,7 @@ impl BasicQueries for UserQueries {
         "users".to_string()
     }
 
-    fn create_table(conn: &mut PooledConn) -> Result<(), Box<dyn Error>> {
+    fn create_table(conn: &mut PooledConn) -> Result<()> {
         let query = create_users_table_query();
         let stmt = conn.prep(query)?;
         conn.exec_drop(stmt, ())?;
@@ -28,10 +29,7 @@ impl BasicQueries for UserQueries {
         Ok(())
     }
 
-    fn create_entity(
-        conn: &mut PooledConn,
-        create_dto: Self::CreateDto
-    ) -> Result<i32, Box<dyn Error>> {
+    fn create_entity(conn: &mut PooledConn, create_dto: Self::CreateDto) -> Result<i32> {
         // Now let's insert payments to the database
         conn.exec_drop(
             r"INSERT INTO users (email, password, first_name, last_name, date_of_birth, phone_number)
@@ -47,10 +45,7 @@ impl BasicQueries for UserQueries {
         Ok(conn.last_insert_id().try_into()?)
     }
 
-    fn update_entity(
-        conn: &mut PooledConn,
-        update_dto: Self::UpdateDto
-    ) -> Result<u64, Box<dyn Error>> {
+    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = "UPDATE users SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -86,7 +81,7 @@ impl BasicQueries for UserQueries {
         Ok(query_result.affected_rows())
     }
 
-    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64, Box<dyn Error>> {
+    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64> {
         let query_result = conn.query_iter(format!("DELETE FROM users WHERE id = {}", id))?;
 
         Ok(query_result.affected_rows())
@@ -95,14 +90,12 @@ impl BasicQueries for UserQueries {
 
 #[cfg(test)]
 mod test {
+    use super::*;
     use chrono::NaiveDate;
-
     use crate::tests::{ initialize_test_db, cleanup_test_db };
 
-    use super::*;
-
     #[test]
-    fn test_users_table() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_users_table() -> Result<()> {
         // Setup database connection
         let mut conn = initialize_test_db()?;
 

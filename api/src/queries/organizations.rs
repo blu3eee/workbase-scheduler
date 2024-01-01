@@ -1,19 +1,59 @@
-use std::error::Error;
 use mysql::*;
 use mysql::prelude::*;
 
-use crate::models::organizations::{
-    Organization,
-    RequestCreateOrganization,
-    RequestUpdateOrganization,
-    create_organizations_table_query,
+use crate::models::{
+    organizations::{
+        Organization,
+        RequestCreateOrganization,
+        RequestUpdateOrganization,
+        create_organizations_table_query,
+    },
+    error::Result,
 };
 
 use super::BasicQueries;
 
-pub struct OrganizationQueries {}
+pub struct OrgQueries {}
 
-impl BasicQueries for OrganizationQueries {
+impl OrgQueries {
+    pub fn find_by_id_with_owner(conn: &mut PooledConn, id: i32) -> Result<Organization> {
+        // SQL query to select a user by ID
+        let query =
+            format!("
+            SELECT  
+                org.id as id,
+                org.name as name,
+                org.description as description,
+                org.created_at as created_at,
+                org.updated_at as updated_at,
+                org.is_active as is_active,
+                org.owner_id as owner_id,
+                user.email as owner_email,
+                user.first_name as owner_first_name,
+                user.last_name as owner_last_name,
+                user.date_of_birth as owner_date_of_birth,
+                user.phone_number as owner_phone_number,
+                user.created_at as owner_created_at,
+                user.updated_at as owner_updated_at
+            FROM organizations org
+            LEFT JOIN users user ON user.id = org.owner_id 
+            WHERE org.id = {};", id);
+
+        // Execute the query
+        let result: Option<<Self as BasicQueries>::Model> = conn.exec_first(query, ())?;
+
+        // Extract the first row from the result (if any)
+        if let Some(model) = result {
+            // Convert the row into a User struct
+            Ok(model)
+        } else {
+            // Return an error if no user is found
+            Err(From::from("User not found"))
+        }
+    }
+}
+
+impl BasicQueries for OrgQueries {
     type Model = Organization;
 
     type CreateDto = RequestCreateOrganization;
@@ -24,7 +64,7 @@ impl BasicQueries for OrganizationQueries {
         "organizations".to_string()
     }
 
-    fn create_table(conn: &mut PooledConn) -> Result<(), Box<dyn Error>> {
+    fn create_table(conn: &mut PooledConn) -> Result<()> {
         let query = create_organizations_table_query();
         let stmt = conn.prep(query)?;
         conn.exec_drop(stmt, ())?;
@@ -32,10 +72,7 @@ impl BasicQueries for OrganizationQueries {
         Ok(())
     }
 
-    fn create_entity(
-        conn: &mut PooledConn,
-        create_dto: Self::CreateDto
-    ) -> Result<i32, Box<dyn Error>> {
+    fn create_entity(conn: &mut PooledConn, create_dto: Self::CreateDto) -> Result<i32> {
         conn.exec_drop(
             r"INSERT INTO organizations (name, description, owner_id)
               VALUES (:name, :description, :owner_id)",
@@ -48,10 +85,7 @@ impl BasicQueries for OrganizationQueries {
         Ok(conn.last_insert_id() as i32)
     }
 
-    fn update_entity(
-        conn: &mut PooledConn,
-        update_dto: Self::UpdateDto
-    ) -> Result<u64, Box<dyn Error>> {
+    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = "UPDATE organizations SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -83,7 +117,7 @@ impl BasicQueries for OrganizationQueries {
         Ok(query_result.affected_rows())
     }
 
-    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64, Box<dyn Error>> {
+    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64> {
         let query_result = conn.query_iter(format!("DELETE FROM organizations WHERE id = {}", id))?;
 
         Ok(query_result.affected_rows())
@@ -100,7 +134,7 @@ mod tests {
     use chrono::NaiveDate;
 
     #[test]
-    fn test_organization_workflow() -> Result<(), Box<dyn std::error::Error>> {
+    fn test_organization_workflow() -> Result<()> {
         // Setup database connection
         let mut conn = initialize_test_db()?;
 
@@ -139,38 +173,14 @@ mod tests {
         let owner_user_id: i32 = conn.last_insert_id().try_into()?;
 
         // Create an organization with the dummy user as owner
-        let org_id: i32 = OrganizationQueries::create_entity(&mut conn, RequestCreateOrganization {
+        let org_id: i32 = OrgQueries::create_entity(&mut conn, RequestCreateOrganization {
             name: "Dummy Organization".to_string(),
             description: Some("A test organization".to_string()),
             owner_id: owner_user_id,
         })?;
 
         // Assert that the organization is linked to the owner
-        let result: Vec<Organization> = conn.query(
-            format!(
-                "SELECT  
-                    org.id as id,
-                    org.name as name,
-                    org.description as description,
-                    org.created_at as created_at,
-                    org.updated_at as updated_at,
-                    org.is_active as is_active,
-                    org.owner_id as owner_id,
-                    user.email as owner_email,
-                    user.first_name as owner_first_name,
-                    user.last_name as owner_last_name,
-                    user.date_of_birth as owner_date_of_birth,
-                    user.phone_number as owner_phone_number,
-                    user.created_at as owner_created_at,
-                    user.updated_at as owner_updated_at
-                FROM organizations org
-                LEFT JOIN users user ON user.id = org.owner_id 
-                WHERE org.id = {org_id};"
-            )
-        )?;
-
-        assert!(!result.is_empty());
-        let org = result[0].clone();
+        let org = OrgQueries::find_by_id_with_owner(&mut conn, org_id)?;
 
         assert_eq!(org.id, org_id);
         assert_eq!(org.owner_id, owner_user_id);

@@ -1,5 +1,4 @@
 use std::env;
-use std::error::Error;
 
 use models::create_tables;
 use mysql::*;
@@ -14,7 +13,7 @@ pub mod tests;
 ///
 /// This function initializes the Axum router with the provided application state,
 /// then binds and serves the application on a specified address.
-pub async fn run() -> Result<(), Box<dyn Error>> {
+pub async fn run() -> Result<()> {
     let db_url: String = env
         ::var("DATABASE_URL")
         .expect("DATABASE_URL must be set in the .env file");

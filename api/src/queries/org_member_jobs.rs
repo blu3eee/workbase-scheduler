@@ -1,12 +1,14 @@
 use mysql::*;
 use mysql::prelude::*;
-use std::error::Error;
 
-use crate::models::org_member_jobs::{
-    OrgMemberJob,
-    RequestCreateOrgMemberJob,
-    RequestUpdateOrgMemberJob,
-    create_org_member_job_table,
+use crate::models::{
+    org_member_jobs::{
+        OrgMemberJob,
+        RequestCreateOrgMemberJob,
+        RequestUpdateOrgMemberJob,
+        create_org_member_job_table,
+    },
+    error::Result,
 };
 
 use super::BasicQueries;
@@ -22,16 +24,13 @@ impl BasicQueries for OrgMemberJobQueries {
         "org_member_jobs".to_string()
     }
 
-    fn create_table(conn: &mut PooledConn) -> Result<(), Box<dyn Error>> {
+    fn create_table(conn: &mut PooledConn) -> Result<()> {
         let query = create_org_member_job_table();
         conn.query_drop(query)?;
         Ok(())
     }
 
-    fn create_entity(
-        conn: &mut PooledConn,
-        create_dto: Self::CreateDto
-    ) -> Result<i32, Box<dyn Error>> {
+    fn create_entity(conn: &mut PooledConn, create_dto: Self::CreateDto) -> Result<i32> {
         conn.exec_drop(
             format!(
                 "INSERT INTO {} (member_id, job_id, pay_rate) VALUES (:member_id, :job_id, :pay_rate)",
@@ -46,10 +45,7 @@ impl BasicQueries for OrgMemberJobQueries {
         Ok(conn.last_insert_id() as i32)
     }
 
-    fn update_entity(
-        conn: &mut PooledConn,
-        update_dto: Self::UpdateDto
-    ) -> Result<u64, Box<dyn Error>> {
+    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = "UPDATE org_member_jobs SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -81,7 +77,7 @@ impl BasicQueries for OrgMemberJobQueries {
     }
 
     /// delete method not available (entity doesn't have unique ID), use `delete_entity(conn: &mut PooledConn, member_id: i32, job_id: i32)` instead
-    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64, Box<dyn Error>> {
+    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64> {
         let query = "DELETE FROM org_member_jobs WHERE id = :id;";
         let params = params! {
             "id" => id,
@@ -94,18 +90,18 @@ impl BasicQueries for OrgMemberJobQueries {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use chrono::NaiveDate;
-    use std::error::Error;
 
+    use crate::models::error::Result;
     use crate::models::org_jobs::RequestCreateOrgJob;
     use crate::models::org_member_jobs::RequestUpdateOrgMemberJob;
     use crate::queries::BasicQueries;
     use crate::queries::org_jobs::OrgJobQueries;
     use crate::queries::{
         users::UserQueries,
-        organizations::OrganizationQueries,
+        organizations::OrgQueries,
         org_members::OrgMemberQueries,
-        org_member_jobs::OrgMemberJobQueries,
     };
     use crate::models::{
         users::RequestCreateUser,
@@ -116,7 +112,7 @@ mod tests {
     use crate::tests::{ initialize_test_db, cleanup_test_db };
 
     #[test]
-    fn test_org_member_job_queries() -> Result<(), Box<dyn Error>> {
+    fn test_org_member_job_queries() -> Result<()> {
         let mut conn = initialize_test_db()?;
 
         // Create a user
@@ -130,7 +126,7 @@ mod tests {
         })?;
 
         // Create an organization
-        let org_id = OrganizationQueries::create_entity(&mut conn, RequestCreateOrganization {
+        let org_id = OrgQueries::create_entity(&mut conn, RequestCreateOrganization {
             name: "Dummy Organization".to_string(),
             description: Some("A test organization".to_string()),
             owner_id: user_id,

@@ -3,6 +3,8 @@ use mysql::*;
 use mysql::prelude::*;
 use serde::{ Serialize, Deserialize };
 
+use super::convert_to_naive_date_time;
+
 pub fn create_org_job_table() -> String {
     "
     CREATE TABLE IF NOT EXISTS org_jobs (
@@ -11,8 +13,8 @@ pub fn create_org_job_table() -> String {
         name VARCHAR(100) NOT NULL,
         description TEXT,
         base_pay_rate FLOAT,
-        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        create_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        update_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE
     );
     ".to_string()
@@ -25,57 +27,24 @@ pub struct OrgJob {
     pub name: String,
     pub description: Option<String>,
     pub base_pay_rate: f32,
-    pub created_at: NaiveDateTime,
-    pub updated_at: NaiveDateTime,
+    pub create_at: NaiveDateTime,
+    pub update_at: NaiveDateTime,
 }
 
 impl FromRow for OrgJob {
-    fn from_row(row: Row) -> OrgJob {
-        let created_at: String = row.get("created_at").unwrap_or_default();
-        let created_at = NaiveDateTime::parse_from_str(&created_at, "%Y-%m-%d %H:%M:%S").expect(
-            "Failed to parse created_at"
-        );
-        let updated_at: String = row.get("updated_at").unwrap_or_default();
-        let updated_at = NaiveDateTime::parse_from_str(&updated_at, "%Y-%m-%d %H:%M:%S").expect(
-            "Failed to parse updated_at"
-        );
-
-        OrgJob {
-            id: row.get("id").unwrap_or_default(),
-            org_id: row.get("org_id").unwrap_or_default(),
-            name: row.get("name").unwrap_or_default(),
-            description: row.get("description").unwrap_or_default(),
-            base_pay_rate: row.get("base_pay_rate").unwrap_or_default(),
-            created_at,
-            updated_at,
-        }
-    }
-
     fn from_row_opt(row: Row) -> Result<Self, FromRowError> {
-        let id = row.get("id").ok_or(FromRowError(row.clone()))?;
-        let org_id = row.get("org_id").ok_or(FromRowError(row.clone()))?;
-        let name = row.get("name").ok_or(FromRowError(row.clone()))?;
-        let description = row.get("description").ok_or(FromRowError(row.clone()))?;
-
-        let base_pay_rate = row.get("base_pay_rate").ok_or(FromRowError(row.clone()))?;
-        let created_at: String = row.get("created_at").ok_or(FromRowError(row.clone()))?;
-        let created_at = NaiveDateTime::parse_from_str(&created_at, "%Y-%m-%d %H:%M:%S").expect(
-            "Failed to parse created_at"
-        );
-        let updated_at: String = row.get("updated_at").ok_or(FromRowError(row.clone()))?;
-        let updated_at: NaiveDateTime = NaiveDateTime::parse_from_str(
-            &updated_at,
-            "%Y-%m-%d %H:%M:%S"
-        ).expect("Failed to parse updated_at");
-
         Ok(OrgJob {
-            id,
-            org_id,
-            name,
-            description,
-            base_pay_rate,
-            created_at,
-            updated_at,
+            id: row.get("id").ok_or(FromRowError(row.clone()))?,
+            org_id: row.get("org_id").ok_or(FromRowError(row.clone()))?,
+            name: row.get("name").ok_or(FromRowError(row.clone()))?,
+            description: row.get("description").ok_or(FromRowError(row.clone()))?,
+            base_pay_rate: row.get("base_pay_rate").ok_or(FromRowError(row.clone()))?,
+            create_at: convert_to_naive_date_time(
+                row.get("create_at").ok_or(FromRowError(row.clone()))?
+            ),
+            update_at: convert_to_naive_date_time(
+                row.get("update_at").ok_or(FromRowError(row.clone()))?
+            ),
         })
     }
 }
@@ -182,7 +151,7 @@ mod tests {
         // Assert the custom job was correctly inserted
         let result: Vec<OrgJob> = conn.query(
             format!(
-                "SELECT id, org_id, name, description, base_pay_rate, created_at, updated_at FROM org_jobs WHERE id = {job_id}"
+                "SELECT id, org_id, name, description, base_pay_rate, create_at, update_at FROM org_jobs WHERE id = {job_id}"
             )
         )?;
 
