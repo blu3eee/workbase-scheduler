@@ -129,7 +129,7 @@ impl BasicQueries for OrgQueries {
         Ok(org_id)
     }
 
-    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
+    fn update_entity(conn: &mut PooledConn, id: i64, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = "UPDATE organizations SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -154,7 +154,7 @@ impl BasicQueries for OrgQueries {
             return Ok(0);
         }
 
-        query.push_str(&format!(" WHERE id = {};", update_dto.id));
+        query.push_str(&format!(" WHERE id = {};", id));
 
         // Convert Vec to Params::Named
         let params = Params::from(params);
@@ -179,7 +179,8 @@ mod tests {
     #[test]
     fn test_organization_workflow() -> Result<()> {
         // Setup database connection
-        let mut conn = initialize_test_db()?;
+        let pool = initialize_test_db()?;
+        let mut conn = pool.get_conn()?;
 
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 

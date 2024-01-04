@@ -58,7 +58,6 @@ pub struct RequestCreateWorkSchedule {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct RequestUpdateWorkSchedule {
-    pub id: i64,
     pub start_date: Option<NaiveDate>,
     pub end_date: Option<NaiveDate>,
     pub publish: Option<bool>,

@@ -6,7 +6,7 @@ use mysql::prelude::*;
 use crate::models::result::Result;
 use crate::queries::create_tables;
 
-pub fn initialize_test_db() -> Result<PooledConn> {
+pub fn initialize_test_db() -> Result<Pool> {
     dotenv().ok();
     // Setup database connection (replace with your test database credentials)
     let url: String = env
@@ -17,12 +17,14 @@ pub fn initialize_test_db() -> Result<PooledConn> {
     let mut conn: PooledConn = pool.get_conn()?;
 
     conn.query_drop("DROP DATABASE IF EXISTS worktest;")?;
-    conn.query_drop("CREATE DATABASE IF NOT EXISTS worktest;")?;
+    conn.query_drop(
+        "CREATE DATABASE IF NOT EXISTS worktest DEFAULT CHARSET = utf8mb4 DEFAULT COLLATE = utf8mb4_unicode_ci;"
+    )?;
     conn.query_drop("USE worktest;")?;
 
     let _ = create_tables(&mut conn);
 
-    Ok(conn)
+    Ok(pool)
 }
 
 pub fn cleanup_test_db(mut conn: PooledConn) -> Result<()> {

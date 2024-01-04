@@ -143,7 +143,8 @@ mod tests {
 
     #[test]
     fn test_org_member_queries() -> Result<()> {
-        let mut conn = initialize_test_db()?;
+        let pool = initialize_test_db()?;
+        let mut conn = pool.get_conn()?;
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
         // Create user

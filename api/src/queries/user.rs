@@ -2,7 +2,7 @@ use std::env;
 
 use mysql::*;
 use mysql::prelude::*;
-use serde::Deserialize;
+use serde::{ Serialize, Deserialize };
 use bcrypt::{ hash, verify };
 
 use crate::{
@@ -35,13 +35,13 @@ pub fn verify_password(
 
 pub struct UserQueries {}
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LoginForm {
     pub email: String,
     pub password: String,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PasswordChangeForm {
     pub id: i64,
     pub old_password: String,
@@ -72,6 +72,7 @@ impl UserQueries {
                 conn.exec_drop(
                     "UPDATE users SET encrypted_password = :encrypted_password WHERE id = :id;",
                     params! {
+                        "id" => change_form.id,
                         "encrypted_password" => encrypted_password
                     }
                 )?;
@@ -128,7 +129,7 @@ impl BasicQueries for UserQueries {
         )
     }
 
-    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
+    fn update_entity(conn: &mut PooledConn, id: i64, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = "UPDATE users SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -157,7 +158,7 @@ impl BasicQueries for UserQueries {
             return Ok(0);
         }
 
-        query.push_str(&format!(" WHERE id = {};", update_dto.id));
+        query.push_str(&format!(" WHERE id = {};", id));
 
         // Convert Vec to Params::Named
         let params = Params::from(params);
@@ -181,7 +182,8 @@ mod test {
     #[test]
     fn test_users_table() -> Result<()> {
         // Setup database connection
-        let mut conn = initialize_test_db()?;
+        let pool = initialize_test_db()?;
+        let mut conn = pool.get_conn()?;
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
         let users = vec![
@@ -240,11 +242,14 @@ mod test {
 
         // Update a user
         // Example: Update user1's name
-        let affected_rows = UserQueries::update_entity(&mut conn, RequestUpdateUser {
-            id: all_users[0].id,
-            first_name: Some("Johnny".to_string()),
-            ..Default::default()
-        })?;
+        let affected_rows = UserQueries::update_entity(
+            &mut conn,
+            all_users[0].id,
+            RequestUpdateUser {
+                first_name: Some("Johnny".to_string()),
+                ..Default::default()
+            }
+        )?;
         println!("affected_row {affected_rows}");
         assert_eq!(affected_rows, 1);
 

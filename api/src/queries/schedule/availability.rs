@@ -109,7 +109,7 @@ impl BasicQueries for AvailabilityRequestQueries {
         Ok(request_id)
     }
 
-    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
+    fn update_entity(conn: &mut PooledConn, id: i64, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = "UPDATE availability_requests SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -129,7 +129,7 @@ impl BasicQueries for AvailabilityRequestQueries {
         }
 
         query.push_str(&format!(" WHERE id = :id;"));
-        params.push(("id".to_string(), update_dto.id.into()));
+        params.push(("id".to_string(), id.into()));
 
         let params = Params::from(params);
         let query_result = conn.exec_iter(&query, params)?;
@@ -160,7 +160,8 @@ mod tests {
     #[test]
     fn test_availability_requests() -> Result<()> {
         // Setup database connection
-        let mut conn = initialize_test_db()?;
+        let pool = initialize_test_db()?;
+        let mut conn = pool.get_conn()?;
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
         // Create a user and an organization for testing
@@ -210,10 +211,13 @@ mod tests {
 
         // Test updating the availability request
         let update_request = RequestUpdateAvailability {
-            id: request_id,
             status: Some(ScheduleRequestStatus::APPROVED),
         };
-        let affected_rows = AvailabilityRequestQueries::update_entity(&mut conn, update_request)?;
+        let affected_rows = AvailabilityRequestQueries::update_entity(
+            &mut conn,
+            request_id,
+            update_request
+        )?;
         assert_eq!(affected_rows, 1);
 
         // Once the requested availability is approved, that availability won't be the current availability as the start_day is one week later,
@@ -261,8 +265,8 @@ mod tests {
         // Test updating the availability request
         let affected_rows = AvailabilityRequestQueries::update_entity(
             &mut conn,
+            new_request_id,
             RequestUpdateAvailability {
-                id: new_request_id,
                 status: Some(ScheduleRequestStatus::APPROVED),
             }
         )?;

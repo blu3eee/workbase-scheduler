@@ -1,3 +1,4 @@
+use axum::response::Response;
 use mysql::Pool;
 
 use std::sync::Arc;
@@ -11,3 +12,5 @@ pub struct AppState {
 }
 
 pub type AppResult<T> = std::result::Result<T, AppError>;
+
+pub type ApiResponse = AppResult<Response>;

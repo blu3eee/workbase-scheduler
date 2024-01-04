@@ -51,7 +51,8 @@ mod tests {
     #[test]
     fn test_work_schedule_queries() -> Result<()> {
         // Setup database connection
-        let mut conn = initialize_test_db()?;
+        let pool = initialize_test_db()?;
+        let mut conn = pool.get_conn()?;
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
         // Create a user
@@ -217,12 +218,15 @@ mod tests {
         )?;
         assert_eq!(shift_trade_request.status, ShiftRequestStatus::PENDING);
 
-        let _ = ShiftTradeQueries::update_entity(&mut conn, RequestUpdateShiftRequest {
-            id: shift_trade_request_id,
-            status: Some(ShiftRequestStatus::DECLINED),
-            admin_id: Some(owner_user_id),
-            note: Some("test declining shift trade request".to_string()),
-        });
+        let _ = ShiftTradeQueries::update_entity(
+            &mut conn,
+            shift_trade_request_id,
+            RequestUpdateShiftRequest {
+                status: Some(ShiftRequestStatus::DECLINED),
+                admin_id: Some(owner_user_id),
+                note: Some("test declining shift trade request".to_string()),
+            }
+        );
 
         let updated_shift_trade: ShiftTrade = ShiftTradeQueries::find_by_id(
             &mut conn,

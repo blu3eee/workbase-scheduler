@@ -77,7 +77,6 @@ pub struct RequestCreateTimeOff {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct RequestUpdateTimeOff {
-    pub id: i64,
     pub status: Option<ScheduleRequestStatus>,
     pub admin_id: Option<i64>,
     pub reason: Option<String>,

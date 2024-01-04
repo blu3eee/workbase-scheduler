@@ -66,7 +66,6 @@ impl ToString for ShiftRequestStatus {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct RequestUpdateShiftRequest {
-    pub id: i64,
     pub status: Option<ShiftRequestStatus>, // Consider using an Enum in Rust for stronger type safety
     pub admin_id: Option<i64>,
     pub note: Option<String>,

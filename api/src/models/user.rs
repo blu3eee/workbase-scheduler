@@ -83,7 +83,7 @@ impl FromRow for PartialUser {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequestCreateUser {
     pub email: String,
     pub password: String,
@@ -93,9 +93,8 @@ pub struct RequestCreateUser {
     pub phone_number: Option<String>,
 }
 
-#[derive(Debug, Clone, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RequestUpdateUser {
-    pub id: i64,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
     pub date_of_birth: Option<NaiveDate>,
@@ -103,7 +102,7 @@ pub struct RequestUpdateUser {
     pub is_active: Option<bool>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequestUpdateUserCredentials {
     pub email: Option<String>,
     pub password: Option<String>,

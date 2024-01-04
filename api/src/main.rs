@@ -4,7 +4,7 @@ use mysql::*;
 
 use dotenv::dotenv;
 
-use api::{ run, queries::create_tables, snowflake::SnowflakeGenerator, appstate::AppState };
+use api::{ run, queries::create_tables, snowflake::SnowflakeGenerator, app::AppState };
 
 #[tokio::main]
 async fn main() {

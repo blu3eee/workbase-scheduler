@@ -48,7 +48,7 @@ impl BasicQueries for OrgJobQueries {
         )
     }
 
-    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
+    fn update_entity(conn: &mut PooledConn, id: i64, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = format!("UPDATE {} SET ", Self::table_name());
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -70,7 +70,7 @@ impl BasicQueries for OrgJobQueries {
         query.pop();
 
         query.push_str(&format!(" WHERE id = :id;"));
-        params.push(("id".to_string(), update_dto.id.into()));
+        params.push(("id".to_string(), id.into()));
 
         let params = Params::from(params);
         let query_result = conn.exec_iter(&query, params)?;
@@ -96,7 +96,8 @@ mod tests {
 
     #[test]
     fn test_org_job_queries() -> Result<()> {
-        let mut conn = initialize_test_db()?;
+        let pool = initialize_test_db()?;
+        let mut conn = pool.get_conn()?;
 
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
@@ -139,8 +140,7 @@ mod tests {
         let job_id = OrgJobQueries::create_entity(&mut conn, snowflake_generator.clone(), job)?;
 
         // Test updating the job
-        let affected_rows = OrgJobQueries::update_entity(&mut conn, RequestUpdateOrgJob {
-            id: job_id,
+        let affected_rows = OrgJobQueries::update_entity(&mut conn, job_id, RequestUpdateOrgJob {
             name: Some("Senior Developer".to_string()),
             description: None,
             base_pay_rate: Some(60.0),

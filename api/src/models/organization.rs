@@ -81,7 +81,6 @@ pub struct RequestCreateOrganization {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct RequestUpdateOrganization {
-    pub id: i64,
     pub name: Option<String>,
     pub description: Option<String>,
     pub owner_id: Option<i64>,

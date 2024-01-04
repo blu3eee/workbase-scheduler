@@ -52,6 +52,7 @@ impl BasicQueries for TimeOffRequestQueries {
 
     fn update_entity(
         conn: &mut mysql::PooledConn,
+        id: i64,
         update_dto: Self::UpdateDto
     ) -> crate::models::result::Result<u64> {
         let mut query = format!("UPDATE {} SET ", Self::table_name());
@@ -79,7 +80,7 @@ impl BasicQueries for TimeOffRequestQueries {
         }
 
         query.push_str(" WHERE id = :id;");
-        params.push(("id".to_string(), Value::from(update_dto.id)));
+        params.push(("id".to_string(), id.into()));
 
         let params = Params::from(params);
         let query_result = conn.exec_iter(&query, params)?;

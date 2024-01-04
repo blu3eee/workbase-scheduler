@@ -1,4 +1,4 @@
-use appstate::AppState;
+use app::AppState;
 use axum::Router;
 use models::result::Result;
 
@@ -11,7 +11,7 @@ pub mod models;
 pub mod router;
 pub mod queries;
 pub mod tests;
-pub mod appstate;
+pub mod app;
 
 /// Starts the Axum web server and sets up routing.
 ///

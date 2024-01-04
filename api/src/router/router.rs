@@ -1,12 +1,12 @@
 use axum::{ middleware, routing::get, Router, Extension };
 
-use crate::appstate::AppState;
+use crate::{ app::AppState, prototypes::uniqueid_routers::UniqueIdRouter };
 
-use super::{ middlewares::log_route::log_route, routes::user::get_all_user_handler };
+use super::{ middlewares::log_route::log_route, routes::user::UserRouter };
 
 pub async fn create_router(app_state: AppState) -> Router {
     Router::new()
-        .route("/users", get(get_all_user_handler))
+        .merge(<UserRouter as UniqueIdRouter>::router().await)
         .layer(Extension(app_state.clone()))
         .layer(middleware::from_fn(log_route))
         .route(

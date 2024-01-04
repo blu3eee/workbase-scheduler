@@ -171,7 +171,7 @@ pub trait BasicQueries {
     ///
     /// A `Result` wrapping the number of affected rows. If no rows are affected, it implies the update
     /// operation did not change any existing data or the specified ID does not exist.
-    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64>;
+    fn update_entity(conn: &mut PooledConn, id: i64, update_dto: Self::UpdateDto) -> Result<u64>;
 
     /// Deletes an entity from the database.
     ///
@@ -235,7 +235,7 @@ pub trait BasicQueries {
             Ok(model)
         } else {
             // Return an error if no user is found
-            Err(From::from("User not found"))
+            Err("User not found".into())
         }
     }
 }

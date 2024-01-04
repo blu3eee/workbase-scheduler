@@ -47,7 +47,7 @@ impl BasicQueries for ShiftCoverQueries {
         )
     }
 
-    fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
+    fn update_entity(conn: &mut PooledConn, id: i64, update_dto: Self::UpdateDto) -> Result<u64> {
         let mut query = "UPDATE shift_covers SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -72,7 +72,7 @@ impl BasicQueries for ShiftCoverQueries {
             return Ok(0);
         }
         query.push_str(" WHERE id = :id;");
-        params.push(("id".to_string(), update_dto.id.into()));
+        params.push(("id".to_string(), id.into()));
 
         let query_result = conn.exec_iter(&query, params)?;
         Ok(query_result.affected_rows())

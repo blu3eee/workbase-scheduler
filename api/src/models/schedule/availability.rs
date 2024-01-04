@@ -67,6 +67,5 @@ pub struct RequestCreateAvailability {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RequestUpdateAvailability {
-    pub id: i64,
     pub status: Option<ScheduleRequestStatus>,
 }

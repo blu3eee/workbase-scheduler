@@ -58,7 +58,6 @@ pub struct RequestCreateOrgJob {
 
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct RequestUpdateOrgJob {
-    pub id: i64,
     pub name: Option<String>,
     pub description: Option<String>,
     pub base_pay_rate: Option<f32>,

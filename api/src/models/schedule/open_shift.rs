@@ -59,7 +59,6 @@ pub struct RequestCreateOpenShift {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct RequestUpdateOpenShift {
-    pub id: i64,
     pub job_id: Option<i64>,
     pub start_time: Option<NaiveDateTime>,
     pub end_time: Option<NaiveDateTime>,
