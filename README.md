@@ -1,5 +1,7 @@
 # WorkBase - Workplace Scheduler
 
+![project logo](assets/logo.png)
+
 ## Introduction
 
 **WorkBase** is a comprehensive solution designed to streamline workplace scheduling. This project aims to deliver a simple and intuitive platform for managing workplace tasks, schedules, and resources efficiently.
