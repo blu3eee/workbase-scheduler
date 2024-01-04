@@ -27,6 +27,8 @@
 - **Database Interaction**: The `mysql` crate is central to our database operations, providing the necessary tools to connect, query, and manage the MySQL database.
 - **API Development**: Using `axum` for creating backend API. `tokio` will be employed for handling asynchronous tasks, enhancing the performance and scalability of our backend services.
 
+![database schema](assets/WorkBase.png)
+
 ### Frontend (React, TypeScript, MUI, StyleX)
 
 - **React & TypeScript**: The combination of React and TypeScript will offer a robust and type-safe development experience, leading to more maintainable and scalable front-end code.
