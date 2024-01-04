@@ -1,6 +1,6 @@
 # WorkBase - Workplace Scheduler
 
-![project logo](assets/logo.png =250px)
+![project logo](assets/logo.png =250x)
 
 ## Introduction
 
