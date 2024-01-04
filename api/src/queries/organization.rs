@@ -1,22 +1,30 @@
+use std::sync::Arc;
+
 use mysql::*;
 use mysql::prelude::*;
 
-use crate::models::{
-    organizations::{
-        Organization,
-        RequestCreateOrganization,
-        RequestUpdateOrganization,
-        create_organizations_table_query,
+use crate::{
+    models::{
+        organization::{
+            Organization,
+            RequestCreateOrganization,
+            RequestUpdateOrganization,
+            create_organizations_table_query,
+        },
+        result::Result,
+        org_job::RequestCreateOrgJob,
+        org_member::RequestCreateOrgMember,
     },
-    error::Result,
+    prototypes::{ basic_queries::BasicQueries, create_table::DatabaseTable },
+    snowflake::SnowflakeGenerator,
 };
 
-use super::BasicQueries;
+use super::{ org_job::OrgJobQueries, org_member::OrgMemberQueries };
 
 pub struct OrgQueries {}
 
 impl OrgQueries {
-    pub fn find_by_id_with_owner(conn: &mut PooledConn, id: i32) -> Result<Organization> {
+    pub fn find_by_id_with_owner(conn: &mut PooledConn, id: i64) -> Result<Organization> {
         // SQL query to select a user by ID
         let query =
             format!("
@@ -24,17 +32,18 @@ impl OrgQueries {
                 org.id as id,
                 org.name as name,
                 org.description as description,
-                org.created_at as created_at,
                 org.updated_at as updated_at,
                 org.is_active as is_active,
+                org.timezone as timezone,
                 org.owner_id as owner_id,
+                org.icon as icon,
                 user.email as owner_email,
                 user.first_name as owner_first_name,
                 user.last_name as owner_last_name,
                 user.date_of_birth as owner_date_of_birth,
                 user.phone_number as owner_phone_number,
-                user.created_at as owner_created_at,
-                user.updated_at as owner_updated_at
+                user.avatar as owner_avatar,
+                user.is_active as owner_is_active
             FROM organizations org
             LEFT JOIN users user ON user.id = org.owner_id 
             WHERE org.id = {};", id);
@@ -53,6 +62,16 @@ impl OrgQueries {
     }
 }
 
+impl DatabaseTable for OrgQueries {
+    fn create_table(&self, conn: &mut PooledConn) -> Result<()> {
+        let query = create_organizations_table_query();
+        let stmt = conn.prep(query)?;
+        conn.exec_drop(stmt, ())?;
+
+        Ok(())
+    }
+}
+
 impl BasicQueries for OrgQueries {
     type Model = Organization;
 
@@ -64,25 +83,50 @@ impl BasicQueries for OrgQueries {
         "organizations".to_string()
     }
 
-    fn create_table(conn: &mut PooledConn) -> Result<()> {
-        let query = create_organizations_table_query();
-        let stmt = conn.prep(query)?;
-        conn.exec_drop(stmt, ())?;
-
-        Ok(())
+    fn insert_statement() -> String {
+        format!(
+            "INSERT INTO {} (id, name, description, owner_id) VALUES (:id, :name, :description, :owner_id)",
+            Self::table_name()
+        )
     }
 
-    fn create_entity(conn: &mut PooledConn, create_dto: Self::CreateDto) -> Result<i32> {
-        conn.exec_drop(
-            r"INSERT INTO organizations (name, description, owner_id)
-              VALUES (:name, :description, :owner_id)",
+    fn insert_params(create_dto: &Self::CreateDto) -> Result<Params> {
+        Ok(
             params! {
                 "name" => &create_dto.name,
                 "description" => &create_dto.description,
                 "owner_id" => create_dto.owner_id,
             }
+        )
+    }
+
+    fn create_entity_postprocessor(
+        conn: &mut PooledConn,
+        snowflake_generator: Arc<SnowflakeGenerator>,
+        create_dto: Self::CreateDto,
+        id: i64
+    ) -> Result<i64> {
+        let org_id = id;
+
+        let job_id = OrgJobQueries::create_entity(
+            conn,
+            snowflake_generator.clone(),
+            RequestCreateOrgJob {
+                org_id,
+                name: "Dummy".to_string(),
+                description: Some("Dummy for job placeholders".to_string()),
+                base_pay_rate: 0.0,
+                color: None,
+            }
         )?;
-        Ok(conn.last_insert_id() as i32)
+
+        let _ = OrgMemberQueries::create_entity(conn, RequestCreateOrgMember {
+            org_id,
+            user_id: create_dto.owner_id,
+            job_id,
+        })?;
+
+        Ok(org_id)
     }
 
     fn update_entity(conn: &mut PooledConn, update_dto: Self::UpdateDto) -> Result<u64> {
@@ -102,9 +146,14 @@ impl BasicQueries for OrgQueries {
             params.push(("owner_id".to_string(), owner_id.into()));
         }
 
-        // Remove trailing comma and space
-        query.pop();
-        query.pop();
+        // Remove last comma and space if there are updates
+        if !params.is_empty() {
+            query.pop();
+            query.pop();
+        } else {
+            return Ok(0);
+        }
+
         query.push_str(&format!(" WHERE id = {};", update_dto.id));
 
         // Convert Vec to Params::Named
@@ -116,18 +165,12 @@ impl BasicQueries for OrgQueries {
         // Return the number of affected rows
         Ok(query_result.affected_rows())
     }
-
-    fn delete_entity(conn: &mut PooledConn, id: i32) -> Result<u64> {
-        let query_result = conn.query_iter(format!("DELETE FROM organizations WHERE id = {}", id))?;
-
-        Ok(query_result.affected_rows())
-    }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::models::users::RequestCreateUser;
-    use crate::queries::users::UserQueries;
+    use crate::models::user::RequestCreateUser;
+    use crate::queries::user::UserQueries;
     use crate::tests::{ initialize_test_db, cleanup_test_db };
 
     use super::*;
@@ -137,6 +180,8 @@ mod tests {
     fn test_organization_workflow() -> Result<()> {
         // Setup database connection
         let mut conn = initialize_test_db()?;
+
+        let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
         let users = vec![
             RequestCreateUser {
@@ -156,28 +201,39 @@ mod tests {
                 phone_number: Some("9094610000".to_string()),
             }
         ];
-        let user_ids: Vec<i32> = users
+        let user_ids: Vec<i64> = users
             .iter()
             .filter_map(|user| {
-                if let Some(user_id) = UserQueries::create_entity(&mut conn, user.clone()).ok() {
+                if
+                    let Some(user_id) = UserQueries::create_entity(
+                        &mut conn,
+                        snowflake_generator.clone(),
+                        user.clone()
+                    ).ok()
+                {
                     Some(user_id)
                 } else {
                     None
                 }
             })
-            .collect::<Vec<i32>>();
+            .collect::<Vec<i64>>();
 
         assert_eq!(user_ids.len(), users.len());
 
-        // Get the ID of the inserted user
-        let owner_user_id: i32 = conn.last_insert_id().try_into()?;
+        let owner_user_id = user_ids[0];
 
         // Create an organization with the dummy user as owner
-        let org_id: i32 = OrgQueries::create_entity(&mut conn, RequestCreateOrganization {
-            name: "Dummy Organization".to_string(),
-            description: Some("A test organization".to_string()),
-            owner_id: owner_user_id,
-        })?;
+        let org_id: i64 = OrgQueries::create_entity(
+            &mut conn,
+            snowflake_generator.clone(),
+            RequestCreateOrganization {
+                name: "Dummy Organization".to_string(),
+                description: Some("A test organization".to_string()),
+                owner_id: owner_user_id,
+                timezone: None,
+                icon: None,
+            }
+        )?;
 
         // Assert that the organization is linked to the owner
         let org = OrgQueries::find_by_id_with_owner(&mut conn, org_id)?;

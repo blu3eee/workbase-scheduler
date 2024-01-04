@@ -1,26 +1,30 @@
-use std::env;
+use appstate::AppState;
+use axum::Router;
+use models::result::Result;
 
-use models::create_tables;
-use mysql::*;
-// use mysql::prelude::*;
+use crate::router::router::create_router;
 
+pub mod utilities;
+pub mod snowflake;
+pub mod prototypes;
 pub mod models;
 pub mod router;
 pub mod queries;
 pub mod tests;
+pub mod appstate;
 
 /// Starts the Axum web server and sets up routing.
 ///
 /// This function initializes the Axum router with the provided application state,
 /// then binds and serves the application on a specified address.
-pub async fn run() -> Result<()> {
-    let db_url: String = env
-        ::var("DATABASE_URL")
-        .expect("DATABASE_URL must be set in the .env file");
+pub async fn run(app_state: AppState) -> Result<()> {
+    let app: Router = Router::new().nest("/api", create_router(app_state).await);
 
-    let pool = Pool::new(db_url.as_str())?;
+    println!("Starting server on 127.0.0.1:8080");
+    let address = std::net::SocketAddr::from(([127, 0, 0, 1], 8080));
 
-    let conn: PooledConn = pool.get_conn()?;
-    let _ = create_tables(conn).await;
+    // axum::serve::Serve::bind(&address).serve(app.into_make_service()).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(address).await.unwrap();
+    axum::serve(listener, app.into_make_service()).await.unwrap();
     Ok(())
 }
