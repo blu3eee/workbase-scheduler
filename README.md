@@ -1,6 +1,6 @@
 # WorkBase - Workplace Scheduler
 
-<img src="assets/logo.png" width="200" height="200" />
+<img src="assets/simple-logo.png" width="200" height="200" />
 
 ## Introduction
 
@@ -36,3 +36,4 @@
 - **React & TypeScript**: The combination of React and TypeScript will offer a robust and type-safe development experience, leading to more maintainable and scalable front-end code.
 - **MUI**: Material-UI will be used for designing a sleek and responsive user interface, providing a collection of pre-made components that align with Material Design principles.
 - **StyleX**: This will aid in creating custom and efficient CSS styles, allowing for a more tailored and performance-oriented user experience.
+- **Color palette**: Timberwolf (#D6D3CC), Tiber (#0B323E), Downy Blue (#80BED7), Granny Smith (#849C9C)
