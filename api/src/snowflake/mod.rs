@@ -1,6 +1,8 @@
 use chrono::Utc;
 use std::sync::Mutex;
 
+pub type SnowflakeId = i64;
+
 const EPOCH: i64 = 1704096000000; // Custom Epoch (2024-01-01T00:00:00Z)
 const MACHINE_ID_BITS: i64 = 5;
 const SEQUENCE_BITS: i64 = 12;

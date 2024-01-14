@@ -9,13 +9,13 @@ pub fn create_work_schedules_table_query() -> String {
     "
     CREATE TABLE IF NOT EXISTS work_schedules (
         id BIGINT NOT NULL PRIMARY KEY,
-        org_id BIGINT NOT NULL,
-        published BOOLEAN NOT NULL DEFAULT FALSE,
+        company_id BIGINT NOT NULL,
         start_date DATE NOT NULL,
         end_date DATE NOT NULL,
+        published BOOLEAN NOT NULL DEFAULT FALSE,
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE,
-        UNIQUE KEY org_work_schedule (org_id, start_date)
+        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+        UNIQUE KEY company_work_schedule (company_id, start_date)
     );
     ".to_string()
 }
@@ -23,10 +23,10 @@ pub fn create_work_schedules_table_query() -> String {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkSchedule {
     pub id: i64,
-    pub org_id: i64,
-    pub published: bool,
+    pub company_id: i64,
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
+    pub published: bool,
     pub updated_at: NaiveDateTime,
 }
 
@@ -34,7 +34,7 @@ impl FromRow for WorkSchedule {
     fn from_row_opt(row: Row) -> Result<Self, FromRowError> {
         Ok(WorkSchedule {
             id: row.get("id").ok_or(FromRowError(row.clone()))?,
-            org_id: row.get("org_id").ok_or(FromRowError(row.clone()))?,
+            company_id: row.get("company_id").ok_or(FromRowError(row.clone()))?,
             published: row.get("published").ok_or(FromRowError(row.clone()))?,
             start_date: convert_to_naive_date(
                 row.get("start_date").ok_or(FromRowError(row.clone()))?
@@ -51,7 +51,7 @@ impl FromRow for WorkSchedule {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RequestCreateWorkSchedule {
-    pub org_id: i64,
+    pub company_id: i64,
     pub start_date: NaiveDate,
     pub end_date: NaiveDate,
 }

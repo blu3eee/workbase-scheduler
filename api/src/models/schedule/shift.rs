@@ -18,7 +18,7 @@ pub fn create_shifts_table_query() -> String {
         note TEXT,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (schedule_id) REFERENCES work_schedules(id) ON DELETE CASCADE,
-        FOREIGN KEY (job_id) REFERENCES org_jobs(id) ON DELETE CASCADE
+        FOREIGN KEY (job_id) REFERENCES company_jobs(id) ON DELETE CASCADE
     );
     ".to_string()
 }

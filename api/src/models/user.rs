@@ -1,10 +1,11 @@
-use chrono::NaiveDate;
+use chrono::{ NaiveDate, NaiveDateTime };
 use serde::{ Serialize, Deserialize };
 
 use mysql::*;
 use mysql::prelude::*;
 
-use crate::utilities::parse_chrono::convert_to_naive_date;
+use crate::snowflake::SnowflakeId;
+use crate::utilities::parse_chrono::{ convert_to_naive_date, convert_to_naive_date_time };
 
 /// SQL statement to create the table `users`
 pub fn create_users_table_query() -> String {
@@ -17,15 +18,16 @@ pub fn create_users_table_query() -> String {
         last_name VARCHAR(100) NOT NULL,
         date_of_birth DATE NOT NULL,
         phone_number VARCHAR(20) NULL UNIQUE,
-        avatar VARCHAR(255) NULL,  
-        is_active BOOLEAN NOT NULL DEFAULT TRUE
+        avatar VARCHAR(255) NULL,
+        is_active BOOLEAN NOT NULL DEFAULT TRUE,
+        deleted_at TIMESTAMP NULL,
     );
     ".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct User {
-    pub id: i64,
+    pub id: SnowflakeId,
     pub email: String,
     pub encrypted_password: String,
     pub first_name: String,
@@ -34,10 +36,19 @@ pub struct User {
     pub phone_number: Option<String>,
     pub avatar: Option<String>,
     pub is_active: bool,
+    pub deleted_at: Option<NaiveDateTime>,
 }
 
 impl FromRow for User {
     fn from_row_opt(row: Row) -> Result<Self, FromRowError> {
+        let deleted_at = if
+            let Some(timestamp) = row.get("deleted_at").ok_or(FromRowError(row.clone()))?
+        {
+            Some(convert_to_naive_date_time(timestamp).map_err(|_| FromRowError(row.clone()))?)
+        } else {
+            None
+        };
+
         Ok(User {
             id: row.get("id").ok_or(FromRowError(row.clone()))?,
             email: row.get("email").ok_or(FromRowError(row.clone()))?,
@@ -50,6 +61,7 @@ impl FromRow for User {
             phone_number: row.get("phone_number").ok_or(FromRowError(row.clone()))?,
             avatar: row.get("avatar").ok_or(FromRowError(row.clone()))?,
             is_active: row.get("is_active").ok_or(FromRowError(row.clone()))?,
+            deleted_at,
         })
     }
 }

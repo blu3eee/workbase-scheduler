@@ -59,3 +59,11 @@ pub struct RequestCreateShiftCover {
     pub shift_id: i64,
     pub cover_user_id: i64,
 }
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct RequestUpdateShiftCover {
+    pub id: i64,
+    pub status: Option<ShiftRequestStatus>,
+    pub note: Option<String>,
+    pub admin_id: Option<i64>,
+}

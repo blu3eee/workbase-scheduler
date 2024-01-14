@@ -1,41 +1,46 @@
-use chrono::NaiveDateTime;
 use serde::{ Serialize, Deserialize };
 use mysql::*;
 use mysql::prelude::*;
 
-use crate::utilities::parse_chrono::{ convert_to_naive_date, convert_to_naive_date_time };
+use crate::snowflake::SnowflakeId;
+use crate::utilities::parse_chrono::convert_to_naive_date;
 use super::user::PartialUser;
 
-pub fn create_organizations_table_query() -> String {
+pub mod company_location;
+pub mod location_department;
+pub mod location_holiday_setting;
+pub mod location_operation_hour;
+pub mod location_shift_feedback;
+pub mod company_employee;
+pub mod company_onboarding_invite;
+pub mod department_role;
+
+pub fn create_companies_table_query() -> String {
     "
-    CREATE TABLE IF NOT EXISTS organizations (
+    CREATE TABLE IF NOT EXISTS companies (
         id BIGINT NOT NULL PRIMARY KEY,
         name VARCHAR(100) NOT NULL,
         description TEXT,
-        owner_id BIGINT NOT NULL,
-        timezone VARCHAR(50) NOT NULL DEFAULT 'America/Los_Angeles',
         icon VARCHAR(255) NULL,
-        is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        last_employee_id INT NOT NULL DEFAULT 0,
+        owner_id BIGINT NOT NULL,
         FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE
     );
     ".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Organization {
-    pub id: i64,
+pub struct Company {
+    pub id: SnowflakeId,
     pub name: String,
     pub description: Option<String>,
-    pub owner_id: i64,
-    pub timezone: String,
     pub icon: Option<String>,
-    pub is_active: bool,
-    pub updated_at: NaiveDateTime,
+    pub last_employee_id: i32,
+    pub owner_id: i64,
     pub owner: Option<PartialUser>,
 }
 
-impl FromRow for Organization {
+impl FromRow for Company {
     fn from_row_opt(row: Row) -> Result<Self, FromRowError> {
         let owner: Option<PartialUser> = if let Some(email) = row.get("owner_email") {
             Some(PartialUser {
@@ -54,24 +59,20 @@ impl FromRow for Organization {
             None
         };
 
-        Ok(Organization {
+        Ok(Company {
             id: row.get("id").ok_or(FromRowError(row.clone()))?,
             name: row.get("name").ok_or(FromRowError(row.clone()))?,
             description: row.get("description").ok_or(FromRowError(row.clone()))?,
-            owner_id: row.get("owner_id").ok_or(FromRowError(row.clone()))?,
-            timezone: row.get("timezone").ok_or(FromRowError(row.clone()))?,
             icon: row.get("icon").ok_or(FromRowError(row.clone()))?,
-            is_active: row.get("is_active").ok_or(FromRowError(row.clone()))?,
-            updated_at: convert_to_naive_date_time(
-                row.get("updated_at").ok_or(FromRowError(row.clone()))?
-            ).map_err(|_| FromRowError(row.clone()))?,
+            last_employee_id: row.get("last_employee_id").ok_or(FromRowError(row.clone()))?,
+            owner_id: row.get("owner_id").ok_or(FromRowError(row.clone()))?,
             owner,
         })
     }
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct RequestCreateOrganization {
+pub struct RequestCreateCompany {
     pub name: String,
     pub description: Option<String>,
     pub owner_id: i64,
@@ -80,7 +81,7 @@ pub struct RequestCreateOrganization {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
-pub struct RequestUpdateOrganization {
+pub struct RequestUpdateCompany {
     pub name: Option<String>,
     pub description: Option<String>,
     pub owner_id: Option<i64>,

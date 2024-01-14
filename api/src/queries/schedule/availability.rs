@@ -22,16 +22,16 @@ use super::availability_detail::AvailabilityDetailQueries;
 pub struct AvailabilityRequestQueries;
 
 impl AvailabilityRequestQueries {
-    /// Fetches the latest approved availability request for a specific user in an organization.
+    /// Fetches the latest approved availability request for a specific user in an company.
     pub fn get_current_availability(
         conn: &mut PooledConn,
         user_id: i64,
-        org_id: i64
+        company_id: i64
     ) -> Result<Option<AvailabilityRequest>> {
         let query =
             "SELECT * FROM availability_requests 
             WHERE user_id = :user_id 
-                AND org_id = :org_id
+                AND company_id = :company_id
                 AND status = 'APPROVED' 
                 AND start_date <= CURDATE()
             ORDER BY start_date DESC 
@@ -42,7 +42,7 @@ impl AvailabilityRequestQueries {
                 query,
                 params! {
                 "user_id" => user_id,
-                "org_id" => org_id,
+                "company_id" => company_id,
             }
             )?
         )
@@ -81,7 +81,7 @@ impl BasicQueries for AvailabilityRequestQueries {
 
     fn insert_statement() -> String {
         format!(
-            r"INSERT INTO {} (id, user_id, org_id, start_date) VALUES (:id, :user_id, :org_id, :start_date);",
+            r"INSERT INTO {} (id, user_id, company_id, start_date) VALUES (:id, :user_id, :company_id, :start_date);",
             Self::table_name()
         )
     }
@@ -90,7 +90,7 @@ impl BasicQueries for AvailabilityRequestQueries {
         Ok(
             params! {
                 "user_id" => create_dto.user_id,
-                "org_id" => create_dto.org_id,
+                "company_id" => create_dto.company_id,
                 "start_date" => create_dto.start_date.to_string(),
             }
         )
@@ -145,12 +145,12 @@ mod tests {
     use super::*;
     use crate::{
         tests::{ initialize_test_db, cleanup_test_db },
-        queries::{ user::UserQueries, organization::OrgQueries },
+        queries::{ user::UserQueries, company::CompanyQueries },
         models::{
-            organization::RequestCreateOrganization,
+            company::RequestCreateCompany,
             user::RequestCreateUser,
             schedule::{
-                request_status::ScheduleRequestStatus,
+                request_status::GeneralStatus,
                 availability_detail::{ RequestCreateAvailabilityDetail, DayOfWeek },
             },
         },
@@ -164,10 +164,10 @@ mod tests {
         let mut conn = pool.get_conn()?;
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
-        // Create a user and an organization for testing
+        // Create a user and an company for testing
         // Assume these functions return valid IDs
         let user_id = create_test_user(&mut conn, snowflake_generator.clone())?;
-        let org_id = create_test_organization(&mut conn, snowflake_generator.clone(), user_id)?;
+        let company_id = create_test_company(&mut conn, snowflake_generator.clone(), user_id)?;
 
         let today = Utc::now().date_naive();
         let one_week_later = today.add(Duration::weeks(1));
@@ -175,7 +175,7 @@ mod tests {
         // Test creating an availability request
         let create_request = RequestCreateAvailability {
             user_id,
-            org_id,
+            company_id,
             start_date: one_week_later,
             details: vec![
                 RequestCreateAvailabilityDetail {
@@ -211,7 +211,7 @@ mod tests {
 
         // Test updating the availability request
         let update_request = RequestUpdateAvailability {
-            status: Some(ScheduleRequestStatus::APPROVED),
+            status: Some(GeneralStatus::APPROVED),
         };
         let affected_rows = AvailabilityRequestQueries::update_entity(
             &mut conn,
@@ -226,7 +226,7 @@ mod tests {
         let current_availability = AvailabilityRequestQueries::get_current_availability(
             &mut conn,
             user_id,
-            org_id
+            company_id
         )?;
         assert!(current_availability.is_none());
 
@@ -235,7 +235,7 @@ mod tests {
         // Test create another availability request
         let create_new_request = RequestCreateAvailability {
             user_id,
-            org_id,
+            company_id,
             start_date: today,
             details: vec![
                 RequestCreateAvailabilityDetail {
@@ -267,7 +267,7 @@ mod tests {
             &mut conn,
             new_request_id,
             RequestUpdateAvailability {
-                status: Some(ScheduleRequestStatus::APPROVED),
+                status: Some(GeneralStatus::APPROVED),
             }
         )?;
         assert_eq!(affected_rows, 1);
@@ -276,14 +276,14 @@ mod tests {
         let current_availability = AvailabilityRequestQueries::get_current_availability(
             &mut conn,
             user_id,
-            org_id
+            company_id
         )?;
         // we know this Option wrapper contains a value because the (known) requested availability has the start date to be the current day of the test (`today`)
         assert!(current_availability.is_some());
         // unwrap and testing
         let current_availability = current_availability.unwrap();
         assert_eq!(current_availability.id, new_request_id);
-        assert_eq!(current_availability.status, ScheduleRequestStatus::APPROVED);
+        assert_eq!(current_availability.status, GeneralStatus::APPROVED);
 
         // Test fetching all availability requests
         let all_requests = AvailabilityRequestQueries::get_all_availability_requests(
@@ -321,15 +321,15 @@ mod tests {
         )
     }
 
-    fn create_test_organization(
+    fn create_test_company(
         conn: &mut PooledConn,
         snowflake_generator: Arc<SnowflakeGenerator>,
         user_id: i64
     ) -> Result<i64> {
         Ok(
-            OrgQueries::create_entity(conn, snowflake_generator.clone(), RequestCreateOrganization {
-                name: "Test Organization".to_string(),
-                description: Some("A test organization".to_string()),
+            CompanyQueries::create_entity(conn, snowflake_generator.clone(), RequestCreateCompany {
+                name: "Test Company".to_string(),
+                description: Some("A test company".to_string()),
                 owner_id: user_id, // Assume the user is the owner
                 timezone: None,
                 icon: None,

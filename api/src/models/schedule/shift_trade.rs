@@ -59,3 +59,11 @@ pub struct RequestCreateShiftTrade {
     pub shift1_id: i64,
     pub shift2_id: i64,
 }
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct RequestUpdateShiftCover {
+    pub id: i64,
+    pub status: Option<ShiftRequestStatus>,
+    pub note: Option<String>,
+    pub admin_id: Option<i64>,
+}

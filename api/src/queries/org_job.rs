@@ -3,7 +3,12 @@ use mysql::prelude::*;
 
 use crate::{
     models::{
-        org_job::{ OrgJob, RequestCreateOrgJob, RequestUpdateOrgJob, create_org_job_table },
+        company_job::{
+            CompanyJob,
+            RequestCreateCompanyJob,
+            RequestUpdateCompanyJob,
+            create_company_job_table,
+        },
         result::Result,
     },
     prototypes::create_table::DatabaseTable,
@@ -11,28 +16,28 @@ use crate::{
 
 use crate::prototypes::basic_queries::BasicQueries;
 
-pub struct OrgJobQueries {}
+pub struct CompanyJobQueries {}
 
-impl DatabaseTable for OrgJobQueries {
+impl DatabaseTable for CompanyJobQueries {
     fn create_table(&self, conn: &mut PooledConn) -> Result<()> {
-        let query = create_org_job_table();
+        let query = create_company_job_table();
         conn.query_drop(query)?;
         Ok(())
     }
 }
 
-impl BasicQueries for OrgJobQueries {
-    type Model = OrgJob;
-    type CreateDto = RequestCreateOrgJob;
-    type UpdateDto = RequestUpdateOrgJob;
+impl BasicQueries for CompanyJobQueries {
+    type Model = CompanyJob;
+    type CreateDto = RequestCreateCompanyJob;
+    type UpdateDto = RequestUpdateCompanyJob;
 
     fn table_name() -> String {
-        "org_jobs".to_string()
+        "company_jobs".to_string()
     }
 
     fn insert_statement() -> String {
         format!(
-            "INSERT INTO {} (id, org_id, name, description, base_pay_rate) VALUES (:id, :org_id, :name, :description, :base_pay_rate)",
+            "INSERT INTO {} (id, company_id, name, description, base_pay_rate) VALUES (:id, :company_id, :name, :description, :base_pay_rate)",
             Self::table_name()
         )
     }
@@ -40,7 +45,7 @@ impl BasicQueries for OrgJobQueries {
     fn insert_params(create_dto: &Self::CreateDto) -> Result<Params> {
         Ok(
             params! {
-                "org_id" => create_dto.org_id,
+                "company_id" => create_dto.company_id,
                 "name" => &create_dto.name,
                 "description" => &create_dto.description,
                 "base_pay_rate" => create_dto.base_pay_rate,
@@ -84,10 +89,10 @@ mod tests {
     use std::sync::Arc;
 
     use super::*;
-    use crate::models::organization::RequestCreateOrganization;
+    use crate::models::company::RequestCreateCompany;
     use crate::models::user::RequestCreateUser;
-    use crate::models::org_job::RequestCreateOrgJob;
-    use crate::queries::organization::OrgQueries;
+    use crate::models::company_job::RequestCreateCompanyJob;
+    use crate::queries::company::CompanyQueries;
     use crate::queries::user::UserQueries;
     use crate::snowflake::SnowflakeGenerator;
     use crate::tests::{ initialize_test_db, cleanup_test_db };
@@ -95,7 +100,7 @@ mod tests {
     use chrono::NaiveDate;
 
     #[test]
-    fn test_org_job_queries() -> Result<()> {
+    fn test_company_job_queries() -> Result<()> {
         let pool = initialize_test_db()?;
         let mut conn = pool.get_conn()?;
 
@@ -117,44 +122,52 @@ mod tests {
             user
         )?;
 
-        // Create an organization
-        let org = RequestCreateOrganization {
-            name: "Test Organization".to_string(),
-            description: Some("A test organization".to_string()),
+        // Create an company
+        let company = RequestCreateCompany {
+            name: "Test Company".to_string(),
+            description: Some("A test company".to_string()),
             owner_id: owner_user_id,
             timezone: None,
             icon: None,
         };
 
-        let org_id: i64 = OrgQueries::create_entity(&mut conn, snowflake_generator.clone(), org)?;
+        let company_id: i64 = CompanyQueries::create_entity(
+            &mut conn,
+            snowflake_generator.clone(),
+            company
+        )?;
 
         // Test creating a job
-        let job = RequestCreateOrgJob {
-            org_id,
+        let job = RequestCreateCompanyJob {
+            company_id,
             name: "Developer".to_string(),
             description: Some("Develops software".to_string()),
             base_pay_rate: 50.0,
             color: None,
         };
 
-        let job_id = OrgJobQueries::create_entity(&mut conn, snowflake_generator.clone(), job)?;
+        let job_id = CompanyJobQueries::create_entity(&mut conn, snowflake_generator.clone(), job)?;
 
         // Test updating the job
-        let affected_rows = OrgJobQueries::update_entity(&mut conn, job_id, RequestUpdateOrgJob {
-            name: Some("Senior Developer".to_string()),
-            description: None,
-            base_pay_rate: Some(60.0),
-            ..Default::default()
-        })?;
+        let affected_rows = CompanyJobQueries::update_entity(
+            &mut conn,
+            job_id,
+            RequestUpdateCompanyJob {
+                name: Some("Senior Developer".to_string()),
+                description: None,
+                base_pay_rate: Some(60.0),
+                ..Default::default()
+            }
+        )?;
         assert_eq!(affected_rows, 1);
 
-        let job: OrgJob = OrgJobQueries::find_by_id(&mut conn, job_id)?;
+        let job: CompanyJob = CompanyJobQueries::find_by_id(&mut conn, job_id)?;
         assert_eq!(job.name, "Senior Developer");
         assert_eq!(job.description, Some("Develops software".to_string()));
         assert_eq!(job.base_pay_rate, 60.0);
 
         // Test deleting the job
-        let deleted_rows = OrgJobQueries::delete_entity(&mut conn, job_id)?;
+        let deleted_rows = CompanyJobQueries::delete_entity(&mut conn, job_id)?;
         assert_eq!(deleted_rows, 1);
 
         // Cleanup: Drop the database

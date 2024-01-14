@@ -5,38 +5,37 @@ use mysql::prelude::*;
 
 use crate::{
     models::{
-        organization::{
-            Organization,
-            RequestCreateOrganization,
-            RequestUpdateOrganization,
-            create_organizations_table_query,
+        company::{
+            Company,
+            RequestCreateCompany,
+            RequestUpdateCompany,
+            create_companies_table_query,
         },
         result::Result,
-        org_job::RequestCreateOrgJob,
-        org_member::RequestCreateOrgMember,
+        company_job::RequestCreateCompanyJob,
+        company_member::RequestCreateCompanyMember,
     },
     prototypes::{ basic_queries::BasicQueries, create_table::DatabaseTable },
     snowflake::SnowflakeGenerator,
 };
 
-use super::{ org_job::OrgJobQueries, org_member::OrgMemberQueries };
+use super::{ company_job::CompanyJobQueries, company_member::CompanyMemberQueries };
 
-pub struct OrgQueries {}
+pub struct CompanyQueries {}
 
-impl OrgQueries {
-    pub fn find_by_id_with_owner(conn: &mut PooledConn, id: i64) -> Result<Organization> {
+impl CompanyQueries {
+    pub fn find_by_id_with_owner(conn: &mut PooledConn, id: i64) -> Result<Company> {
         // SQL query to select a user by ID
         let query =
             format!("
             SELECT  
-                org.id as id,
-                org.name as name,
-                org.description as description,
-                org.updated_at as updated_at,
-                org.is_active as is_active,
-                org.timezone as timezone,
-                org.owner_id as owner_id,
-                org.icon as icon,
+                company.id as id,
+                company.name as name,
+                company.description as description,
+                company.updated_at as updated_at,
+                company.is_active as is_active,
+                company.owner_id as owner_id,
+                company.icon as icon,
                 user.email as owner_email,
                 user.first_name as owner_first_name,
                 user.last_name as owner_last_name,
@@ -44,9 +43,9 @@ impl OrgQueries {
                 user.phone_number as owner_phone_number,
                 user.avatar as owner_avatar,
                 user.is_active as owner_is_active
-            FROM organizations org
-            LEFT JOIN users user ON user.id = org.owner_id 
-            WHERE org.id = {};", id);
+            FROM companies company
+            LEFT JOIN users user ON user.id = company.owner_id 
+            WHERE company.id = {};", id);
 
         // Execute the query
         let result: Option<<Self as BasicQueries>::Model> = conn.exec_first(query, ())?;
@@ -62,9 +61,9 @@ impl OrgQueries {
     }
 }
 
-impl DatabaseTable for OrgQueries {
+impl DatabaseTable for CompanyQueries {
     fn create_table(&self, conn: &mut PooledConn) -> Result<()> {
-        let query = create_organizations_table_query();
+        let query = create_companies_table_query();
         let stmt = conn.prep(query)?;
         conn.exec_drop(stmt, ())?;
 
@@ -72,15 +71,15 @@ impl DatabaseTable for OrgQueries {
     }
 }
 
-impl BasicQueries for OrgQueries {
-    type Model = Organization;
+impl BasicQueries for CompanyQueries {
+    type Model = Company;
 
-    type CreateDto = RequestCreateOrganization;
+    type CreateDto = RequestCreateCompany;
 
-    type UpdateDto = RequestUpdateOrganization;
+    type UpdateDto = RequestUpdateCompany;
 
     fn table_name() -> String {
-        "organizations".to_string()
+        "companies".to_string()
     }
 
     fn insert_statement() -> String {
@@ -106,13 +105,13 @@ impl BasicQueries for OrgQueries {
         create_dto: Self::CreateDto,
         id: i64
     ) -> Result<i64> {
-        let org_id = id;
+        let company_id = id;
 
-        let job_id = OrgJobQueries::create_entity(
+        let job_id = CompanyJobQueries::create_entity(
             conn,
             snowflake_generator.clone(),
-            RequestCreateOrgJob {
-                org_id,
+            RequestCreateCompanyJob {
+                company_id,
                 name: "Dummy".to_string(),
                 description: Some("Dummy for job placeholders".to_string()),
                 base_pay_rate: 0.0,
@@ -120,17 +119,17 @@ impl BasicQueries for OrgQueries {
             }
         )?;
 
-        let _ = OrgMemberQueries::create_entity(conn, RequestCreateOrgMember {
-            org_id,
+        let _ = CompanyMemberQueries::create_entity(conn, RequestCreateCompanyMember {
+            company_id,
             user_id: create_dto.owner_id,
             job_id,
         })?;
 
-        Ok(org_id)
+        Ok(company_id)
     }
 
     fn update_entity(conn: &mut PooledConn, id: i64, update_dto: Self::UpdateDto) -> Result<u64> {
-        let mut query = "UPDATE organizations SET ".to_string();
+        let mut query = "UPDATE companies SET ".to_string();
         let mut params: Vec<(String, Value)> = Vec::new();
 
         if let Some(name) = update_dto.name {
@@ -177,7 +176,7 @@ mod tests {
     use chrono::NaiveDate;
 
     #[test]
-    fn test_organization_workflow() -> Result<()> {
+    fn test_company_workflow() -> Result<()> {
         // Setup database connection
         let pool = initialize_test_db()?;
         let mut conn = pool.get_conn()?;
@@ -223,26 +222,26 @@ mod tests {
 
         let owner_user_id = user_ids[0];
 
-        // Create an organization with the dummy user as owner
-        let org_id: i64 = OrgQueries::create_entity(
+        // Create an company with the dummy user as owner
+        let company_id: i64 = CompanyQueries::create_entity(
             &mut conn,
             snowflake_generator.clone(),
-            RequestCreateOrganization {
-                name: "Dummy Organization".to_string(),
-                description: Some("A test organization".to_string()),
+            RequestCreateCompany {
+                name: "Dummy Company".to_string(),
+                description: Some("A test company".to_string()),
                 owner_id: owner_user_id,
                 timezone: None,
                 icon: None,
             }
         )?;
 
-        // Assert that the organization is linked to the owner
-        let org = OrgQueries::find_by_id_with_owner(&mut conn, org_id)?;
+        // Assert that the company is linked to the owner
+        let company = CompanyQueries::find_by_id_with_owner(&mut conn, company_id)?;
 
-        assert_eq!(org.id, org_id);
-        assert_eq!(org.owner_id, owner_user_id);
-        assert_eq!(org.name, "Dummy Organization".to_string());
-        assert_eq!(org.description, Some("A test organization".to_string()));
+        assert_eq!(company.id, company_id);
+        assert_eq!(company.owner_id, owner_user_id);
+        assert_eq!(company.name, "Dummy Company".to_string());
+        assert_eq!(company.description, Some("A test company".to_string()));
 
         // Clean up: Drop the database
         cleanup_test_db(conn)?;

@@ -13,9 +13,9 @@ pub fn create_open_shifts_table_query() -> String {
         job_id BIGINT NOT NULL,
         start_time TIME NOT NULL,
         end_time TIME NOT NULL,
-        pay_rate FLOAT,
+        wage FLOAT,
         FOREIGN KEY (schedule_id) REFERENCES work_schedules(id) ON DELETE CASCADE,
-        FOREIGN KEY (job_id) REFERENCES org_jobs(id) ON DELETE CASCADE
+        FOREIGN KEY (job_id) REFERENCES company_jobs(id) ON DELETE CASCADE
     );
     ".to_string()
 }
@@ -27,7 +27,7 @@ pub struct OpenShift {
     pub job_id: i64,
     pub start_time: NaiveDateTime,
     pub end_time: NaiveDateTime,
-    pub pay_rate: Option<f32>,
+    pub wage: Option<f32>,
 }
 
 impl FromRow for OpenShift {
@@ -42,7 +42,7 @@ impl FromRow for OpenShift {
             end_time: convert_to_naive_date_time(
                 row.get("end_time").ok_or(FromRowError(row.clone()))?
             ).map_err(|_| FromRowError(row.clone()))?,
-            pay_rate: row.get("pay_rate").ok_or(FromRowError(row.clone()))?,
+            wage: row.get("wage").ok_or(FromRowError(row.clone()))?,
         })
     }
 }
@@ -54,7 +54,7 @@ pub struct RequestCreateOpenShift {
     pub job_id: i64,
     pub start_time: NaiveDateTime,
     pub end_time: NaiveDateTime,
-    pub pay_rate: Option<f32>,
+    pub wage: Option<f32>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -62,5 +62,5 @@ pub struct RequestUpdateOpenShift {
     pub job_id: Option<i64>,
     pub start_time: Option<NaiveDateTime>,
     pub end_time: Option<NaiveDateTime>,
-    pub pay_rate: Option<f32>,
+    pub wage: Option<f32>,
 }

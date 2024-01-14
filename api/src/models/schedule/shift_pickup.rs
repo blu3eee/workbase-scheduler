@@ -59,3 +59,11 @@ pub struct RequestCreateShiftPickup {
     pub openshift_id: i64,
     pub user_id: i64,
 }
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct RequestUpdateShiftCover {
+    pub id: i64,
+    pub status: Option<ShiftRequestStatus>,
+    pub note: Option<String>,
+    pub admin_id: Option<i64>,
+}

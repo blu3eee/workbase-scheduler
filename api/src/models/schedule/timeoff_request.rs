@@ -7,14 +7,14 @@ use serde::{ Serialize, Deserialize };
 
 use crate::utilities::parse_chrono::convert_to_naive_date_time;
 
-use super::request_status::ScheduleRequestStatus;
+use super::request_status::GeneralStatus;
 
 pub fn create_time_off_requests_table_query() -> String {
     "
     CREATE TABLE IF NOT EXISTS time_off_requests (
         id BIGINT NOT NULL PRIMARY KEY,
         user_id BIGINT NOT NULL,
-        org_id BIGINT NOT NULL,
+        company_id BIGINT NOT NULL,
         start_time DATE NOT NULL,
         end_time DATE NOT NULL,
         reason TEXT,
@@ -22,7 +22,7 @@ pub fn create_time_off_requests_table_query() -> String {
         updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         admin_id BIGINT,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
-        FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE
+        FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE
         FOREIGN KEY (admin_id) REFERENCES users(id) ON DELETE SET NULL
     );
     ".to_string()
@@ -32,11 +32,11 @@ pub fn create_time_off_requests_table_query() -> String {
 pub struct TimeOffRequest {
     pub id: i64,
     pub user_id: i64,
-    pub org_id: i64,
+    pub company_id: i64,
     pub start_time: NaiveDateTime,
     pub end_time: NaiveDateTime,
     pub reason: Option<String>,
-    pub status: ScheduleRequestStatus,
+    pub status: GeneralStatus,
     pub updated_at: NaiveDateTime,
     pub admin_id: Option<i64>,
 }
@@ -47,7 +47,7 @@ impl FromRow for TimeOffRequest {
         Ok(TimeOffRequest {
             id: row.get("id").ok_or(FromRowError(row.clone()))?,
             user_id: row.get("user_id").ok_or(FromRowError(row.clone()))?,
-            org_id: row.get("org_id").ok_or(FromRowError(row.clone()))?,
+            company_id: row.get("company_id").ok_or(FromRowError(row.clone()))?,
             start_time: convert_to_naive_date_time(
                 row.get("start_time").ok_or(FromRowError(row.clone()))?
             ).map_err(|_| FromRowError(row.clone()))?,
@@ -55,9 +55,7 @@ impl FromRow for TimeOffRequest {
                 row.get("end_time").ok_or(FromRowError(row.clone()))?
             ).map_err(|_| FromRowError(row.clone()))?,
             reason: row.get("reason").ok_or(FromRowError(row.clone()))?,
-            status: ScheduleRequestStatus::from_str(&status).map_err(|_|
-                FromRowError(row.clone())
-            )?,
+            status: GeneralStatus::from_str(&status).map_err(|_| FromRowError(row.clone()))?,
             updated_at: convert_to_naive_date_time(
                 row.get("updated_at").ok_or(FromRowError(row.clone()))?
             ).map_err(|_| FromRowError(row.clone()))?,
@@ -69,7 +67,7 @@ impl FromRow for TimeOffRequest {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RequestCreateTimeOff {
     pub user_id: i64,
-    pub org_id: i64,
+    pub company_id: i64,
     pub start_time: NaiveDateTime,
     pub end_time: NaiveDateTime,
     pub reason: Option<String>,
@@ -77,7 +75,7 @@ pub struct RequestCreateTimeOff {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct RequestUpdateTimeOff {
-    pub status: Option<ScheduleRequestStatus>,
+    pub status: Option<GeneralStatus>,
     pub admin_id: Option<i64>,
     pub reason: Option<String>,
 }

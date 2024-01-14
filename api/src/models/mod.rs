@@ -1,8 +1,6 @@
 pub mod result;
 pub mod user;
-pub mod organization;
-pub mod org_member;
-pub mod org_job;
+pub mod company;
 pub mod schedule;
 
 use serde::{ Serialize, Deserialize };

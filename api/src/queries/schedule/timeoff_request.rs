@@ -33,7 +33,7 @@ impl BasicQueries for TimeOffRequestQueries {
 
     fn insert_statement() -> String {
         format!(
-            "INSERT INTO {} (id, user_id, org_id, start_time, end_time, reason) VALUES (:id, :user_id, :org_id, :start_time, :end_time, :reason);",
+            "INSERT INTO {} (id, user_id, company_id, start_time, end_time, reason) VALUES (:id, :user_id, :company_id, :start_time, :end_time, :reason);",
             Self::table_name()
         )
     }
@@ -42,7 +42,7 @@ impl BasicQueries for TimeOffRequestQueries {
         Ok(
             params! {
                 "user_id" => create_dto.user_id,
-                "org_id" => create_dto.org_id,
+                "company_id" => create_dto.company_id,
                 "start_time" => create_dto.start_time.to_string(),
                 "end_time" => create_dto.end_time.to_string(),
                 "reason" => &create_dto.reason,

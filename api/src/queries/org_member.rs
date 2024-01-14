@@ -3,22 +3,22 @@ use mysql::prelude::*;
 
 use crate::{
     models::{
-        org_member::{
-            OrgMember,
-            RequestCreateOrgMember,
-            RequestUpdateOrgMember,
-            create_org_members_table_query,
+        company_member::{
+            CompanyMember,
+            RequestCreateCompanyMember,
+            RequestUpdateCompanyMember,
+            create_company_members_table_query,
         },
         result::Result,
     },
     prototypes::create_table::DatabaseTable,
 };
 
-pub struct OrgMemberQueries {}
+pub struct CompanyMemberQueries {}
 
-impl DatabaseTable for OrgMemberQueries {
+impl DatabaseTable for CompanyMemberQueries {
     fn create_table(&self, conn: &mut PooledConn) -> Result<()> {
-        let query = create_org_members_table_query();
+        let query = create_company_members_table_query();
         let stmt = conn.prep(query)?;
         conn.exec_drop(stmt, ())?;
 
@@ -26,34 +26,40 @@ impl DatabaseTable for OrgMemberQueries {
     }
 }
 
-impl OrgMemberQueries {
+impl CompanyMemberQueries {
     fn table_name() -> String {
-        "org_members".to_string()
+        "company_members".to_string()
     }
 
     fn insert_statement() -> String {
         format!(
-            "INSERT INTO {} (user_id, org_id, job_id) VALUES (:user_id, :org_id, :job_id)",
+            "INSERT INTO {} (user_id, company_id, job_id) VALUES (:user_id, :company_id, :job_id)",
             Self::table_name()
         )
     }
 
-    fn insert_params(create_dto: &RequestCreateOrgMember) -> Result<Params> {
+    fn insert_params(create_dto: &RequestCreateCompanyMember) -> Result<Params> {
         Ok(
             params! {
                 "user_id" => create_dto.user_id,
-                "org_id" => create_dto.org_id,
+                "company_id" => create_dto.company_id,
                 "job_id" => create_dto.job_id,
             }
         )
     }
 
-    pub fn create_entity(conn: &mut PooledConn, create_dto: RequestCreateOrgMember) -> Result<()> {
+    pub fn create_entity(
+        conn: &mut PooledConn,
+        create_dto: RequestCreateCompanyMember
+    ) -> Result<()> {
         conn.exec_drop(Self::insert_statement(), Self::insert_params(&create_dto)?)?;
         Ok(())
     }
 
-    pub fn update_entity(conn: &mut PooledConn, update_dto: RequestUpdateOrgMember) -> Result<u64> {
+    pub fn update_entity(
+        conn: &mut PooledConn,
+        update_dto: RequestUpdateCompanyMember
+    ) -> Result<u64> {
         let mut query = format!("UPDATE {} SET ", Self::table_name());
         let mut params: Vec<(String, Value)> = Vec::new();
 
@@ -71,7 +77,11 @@ impl OrgMemberQueries {
         }
 
         query.push_str(
-            &format!(" WHERE org_id = {} AND user_id = {};", update_dto.org_id, update_dto.user_id)
+            &format!(
+                " WHERE company_id = {} AND user_id = {};",
+                update_dto.company_id,
+                update_dto.user_id
+            )
         );
 
         // Convert Vec to Params::Named
@@ -84,12 +94,12 @@ impl OrgMemberQueries {
         Ok(query_result.affected_rows())
     }
 
-    pub fn delete_entity(conn: &mut PooledConn, org_id: i64, user_id: i64) -> Result<u64> {
+    pub fn delete_entity(conn: &mut PooledConn, company_id: i64, user_id: i64) -> Result<u64> {
         let query_result = conn.query_iter(
             format!(
-                "DELETE FROM {} WHERE org_id = {} AND user_id = {};",
+                "DELETE FROM {} WHERE company_id = {} AND user_id = {};",
                 Self::table_name(),
-                org_id,
+                company_id,
                 user_id
             )
         )?;
@@ -97,17 +107,21 @@ impl OrgMemberQueries {
         Ok(query_result.affected_rows())
     }
 
-    pub fn find_by_id(conn: &mut PooledConn, org_id: i64, user_id: i64) -> Result<OrgMember> {
-        // SQL query to select an User in the Organization
+    pub fn find_by_id(
+        conn: &mut PooledConn,
+        company_id: i64,
+        user_id: i64
+    ) -> Result<CompanyMember> {
+        // SQL query to select an User in the Company
         let query = format!(
-            "SELECT * FROM {} WHERE org_id = {} AND user_id = {};",
+            "SELECT * FROM {} WHERE company_id = {} AND user_id = {};",
             Self::table_name(),
-            org_id,
+            company_id,
             user_id
         );
 
         // Execute the query
-        let result: Option<OrgMember> = conn.exec_first(query, ())?;
+        let result: Option<CompanyMember> = conn.exec_first(query, ())?;
 
         // Extract the first row from the result (if any)
         if let Some(model) = result {
@@ -119,8 +133,15 @@ impl OrgMemberQueries {
         }
     }
 
-    pub fn find_org_members(conn: &mut PooledConn, org_id: i64) -> Result<Vec<OrgMember>> {
-        Ok(conn.query(format!("SELECT * FROM {} WHERE org_id = {};", Self::table_name(), org_id))?)
+    pub fn find_company_members(
+        conn: &mut PooledConn,
+        company_id: i64
+    ) -> Result<Vec<CompanyMember>> {
+        Ok(
+            conn.query(
+                format!("SELECT * FROM {} WHERE company_id = {};", Self::table_name(), company_id)
+            )?
+        )
     }
 }
 
@@ -131,18 +152,18 @@ mod tests {
     use chrono::NaiveDate;
 
     use super::*;
-    use crate::models::org_job::RequestCreateOrgJob;
+    use crate::models::company_job::RequestCreateCompanyJob;
     use crate::prototypes::basic_queries::BasicQueries;
-    use crate::queries::org_job::OrgJobQueries;
-    use crate::queries::organization::OrgQueries;
+    use crate::queries::company_job::CompanyJobQueries;
+    use crate::queries::company::CompanyQueries;
     use crate::queries::user::UserQueries;
     use crate::snowflake::SnowflakeGenerator;
     use crate::tests::{ initialize_test_db, cleanup_test_db };
     use crate::models::user::RequestCreateUser;
-    use crate::models::organization::RequestCreateOrganization;
+    use crate::models::company::RequestCreateCompany;
 
     #[test]
-    fn test_org_member_queries() -> Result<()> {
+    fn test_company_member_queries() -> Result<()> {
         let pool = initialize_test_db()?;
         let mut conn = pool.get_conn()?;
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
@@ -161,22 +182,26 @@ mod tests {
             }
         )?;
 
-        // Insert an organization
-        let org = RequestCreateOrganization {
-            name: "Test Organization".to_string(),
-            description: Some("A test organization".to_string()),
+        // Insert an company
+        let company = RequestCreateCompany {
+            name: "Test Company".to_string(),
+            description: Some("A test company".to_string()),
             owner_id: user_id, // Assume the user is the owner
             timezone: None,
             icon: None,
         };
 
-        let org_id: i64 = OrgQueries::create_entity(&mut conn, snowflake_generator.clone(), org)?;
-
-        let job_id: i64 = OrgJobQueries::create_entity(
+        let company_id: i64 = CompanyQueries::create_entity(
             &mut conn,
             snowflake_generator.clone(),
-            RequestCreateOrgJob {
-                org_id,
+            company
+        )?;
+
+        let job_id: i64 = CompanyJobQueries::create_entity(
+            &mut conn,
+            snowflake_generator.clone(),
+            RequestCreateCompanyJob {
+                company_id,
                 name: "Cashier".to_string(),
                 description: None,
                 base_pay_rate: 15.5,
@@ -184,17 +209,17 @@ mod tests {
             }
         )?;
 
-        OrgMemberQueries::update_entity(&mut conn, RequestUpdateOrgMember {
-            org_id,
+        CompanyMemberQueries::update_entity(&mut conn, RequestUpdateCompanyMember {
+            company_id,
             user_id,
             job_id: Some(job_id),
         })?;
 
-        let member = OrgMemberQueries::find_by_id(&mut conn, org_id, user_id)?;
+        let member = CompanyMemberQueries::find_by_id(&mut conn, company_id, user_id)?;
         assert_eq!(member.job_id, job_id);
 
-        // Delete organization member
-        let deleted_rows = OrgMemberQueries::delete_entity(&mut conn, org_id, user_id)?;
+        // Delete company member
+        let deleted_rows = CompanyMemberQueries::delete_entity(&mut conn, company_id, user_id)?;
         assert_eq!(deleted_rows, 1);
 
         cleanup_test_db(conn)?;

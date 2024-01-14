@@ -17,8 +17,11 @@ use crate::{
 pub struct WorkScheduleQueries {}
 
 impl WorkScheduleQueries {
-    pub fn get_org_schedules(conn: &mut PooledConn, org_id: i64) -> Result<Vec<WorkSchedule>> {
-        Ok(conn.query(format!("SELECT * FROM work_schedules WHERE org_id = {};", org_id))?)
+    pub fn get_company_schedules(
+        conn: &mut PooledConn,
+        company_id: i64
+    ) -> Result<Vec<WorkSchedule>> {
+        Ok(conn.query(format!("SELECT * FROM work_schedules WHERE company_id = {};", company_id))?)
     }
 }
 
@@ -41,7 +44,7 @@ impl BasicQueries for WorkScheduleQueries {
 
     fn insert_statement() -> String {
         format!(
-            "INSERT INTO {} (id, org_id, start_date, end_date) VALUES (:id, :org_id, :start_date, :end_date)",
+            "INSERT INTO {} (id, company_id, start_date, end_date) VALUES (:id, :company_id, :start_date, :end_date)",
             Self::table_name()
         )
     }
@@ -49,7 +52,7 @@ impl BasicQueries for WorkScheduleQueries {
     fn insert_params(create_dto: &Self::CreateDto) -> Result<Params> {
         Ok(
             params! {
-                "org_id" => create_dto.org_id,
+                "company_id" => create_dto.company_id,
                 "start_date" => create_dto.start_date.to_string(),
                 "end_date" => create_dto.end_date.to_string(),
             }

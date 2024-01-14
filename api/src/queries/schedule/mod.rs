@@ -18,7 +18,7 @@ mod tests {
         models::{
             result::Result,
             user::RequestCreateUser,
-            organization::RequestCreateOrganization,
+            company::RequestCreateCompany,
             schedule::{
                 work_schedule::RequestCreateWorkSchedule,
                 shift::{ RequestCreateShift, Shift },
@@ -27,21 +27,21 @@ mod tests {
                 RequestUpdateShiftRequest,
                 shift_cover::RequestCreateShiftCover,
             },
-            org_job::RequestCreateOrgJob,
-            org_member::RequestCreateOrgMember,
+            company_job::RequestCreateCompanyJob,
+            company_member::RequestCreateCompanyMember,
         },
         tests::{ initialize_test_db, cleanup_test_db },
         queries::{
             user::UserQueries,
-            organization::OrgQueries,
+            company::CompanyQueries,
             schedule::{
                 work_schedule::WorkScheduleQueries,
                 shift::ShiftQueries,
                 shift_trade::ShiftTradeQueries,
                 shift_cover::ShiftCoverQueries,
             },
-            org_job::OrgJobQueries,
-            org_member::OrgMemberQueries,
+            company_job::CompanyJobQueries,
+            company_member::CompanyMemberQueries,
         },
         prototypes::basic_queries::BasicQueries,
         utilities::parse_chrono::parse_naive_date_time_from_str,
@@ -71,20 +71,24 @@ mod tests {
             user
         )?;
 
-        // Create an organization
-        let org = RequestCreateOrganization {
-            name: "Test Organization".to_string(),
-            description: Some("A test organization".to_string()),
+        // Create an company
+        let company = RequestCreateCompany {
+            name: "Test Company".to_string(),
+            description: Some("A test company".to_string()),
             owner_id: owner_user_id,
             timezone: None,
             icon: None,
         };
 
-        let org_id: i64 = OrgQueries::create_entity(&mut conn, snowflake_generator.clone(), org)?;
+        let company_id: i64 = CompanyQueries::create_entity(
+            &mut conn,
+            snowflake_generator.clone(),
+            company
+        )?;
 
         // Create a work schedule
         let schedule = RequestCreateWorkSchedule {
-            org_id,
+            company_id,
             start_date: NaiveDate::from_ymd_opt(2024, 1, 1).unwrap(),
             end_date: NaiveDate::from_ymd_opt(2024, 1, 7).unwrap(),
         };
@@ -96,15 +100,15 @@ mod tests {
 
         // Retrieve the created schedule
         let retrieved_schedule = WorkScheduleQueries::find_by_id(&mut conn, schedule_id)?;
-        assert_eq!(retrieved_schedule.org_id, org_id);
+        assert_eq!(retrieved_schedule.company_id, company_id);
         assert_eq!(retrieved_schedule.start_date, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
         assert_eq!(retrieved_schedule.end_date, NaiveDate::from_ymd_opt(2024, 1, 7).unwrap());
 
-        let job_id = OrgJobQueries::create_entity(
+        let job_id = CompanyJobQueries::create_entity(
             &mut conn,
             snowflake_generator.clone(),
-            RequestCreateOrgJob {
-                org_id,
+            RequestCreateCompanyJob {
+                company_id,
                 name: "Cashier".to_string(),
                 description: None,
                 base_pay_rate: 50.0,
@@ -125,8 +129,8 @@ mod tests {
             }
         )?;
 
-        let _ = OrgMemberQueries::create_entity(&mut conn, RequestCreateOrgMember {
-            org_id,
+        let _ = CompanyMemberQueries::create_entity(&mut conn, RequestCreateCompanyMember {
+            company_id,
             user_id: employee1_user_id,
             job_id,
         })?;
@@ -144,8 +148,8 @@ mod tests {
             }
         )?;
 
-        let _ = OrgMemberQueries::create_entity(&mut conn, RequestCreateOrgMember {
-            org_id,
+        let _ = CompanyMemberQueries::create_entity(&mut conn, RequestCreateCompanyMember {
+            company_id,
             user_id: employee2_user_id,
             job_id,
         })?;
@@ -163,8 +167,8 @@ mod tests {
             }
         )?;
 
-        let _ = OrgMemberQueries::create_entity(&mut conn, RequestCreateOrgMember {
-            org_id,
+        let _ = CompanyMemberQueries::create_entity(&mut conn, RequestCreateCompanyMember {
+            company_id,
             user_id: employee3_user_id,
             job_id,
         })?;
