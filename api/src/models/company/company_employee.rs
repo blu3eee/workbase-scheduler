@@ -7,7 +7,6 @@ use crate::utilities::parse_chrono::convert_to_naive_date;
 pub fn create_company_employees_table_query() -> String {
     "
     CREATE TABLE IF NOT EXISTS company_employees (
-        id INT NOT NULL,
         user_id BIGINT NOT NULL,
         company_id BIGINT NOT NULL,
         hired_date DATE NOT NULL DEFAULT (CURRENT_DATE),
@@ -22,7 +21,6 @@ pub fn create_company_employees_table_query() -> String {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompanyEmployee {
-    pub id: i32,
     pub user_id: i64,
     pub company_id: i64,
     pub hired_date: NaiveDate,
@@ -40,13 +38,14 @@ pub struct RequestCreateCompanyEmployee {
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct RequestUpdateCompanyEmployee {
-    // pub employee_id:
+    pub punch_id: Option<i32>,
+    pub hired_date: Option<NaiveDate>,
+    pub notes: Option<String>,
 }
 
 impl FromRow for CompanyEmployee {
     fn from_row_opt(row: mysql::Row) -> Result<Self, mysql::FromRowError> where Self: Sized {
         Ok(CompanyEmployee {
-            id: row.get("id").ok_or(FromRowError(row.clone()))?,
             user_id: row.get("user_id").ok_or(FromRowError(row.clone()))?,
             company_id: row.get("company_id").ok_or(FromRowError(row.clone()))?,
             hired_date: convert_to_naive_date(

@@ -12,14 +12,18 @@ use crate::{
             create_companies_table_query,
         },
         result::Result,
-        company_job::RequestCreateCompanyJob,
-        company_member::RequestCreateCompanyMember,
     },
     prototypes::{ basic_queries::BasicQueries, create_table::DatabaseTable },
     snowflake::SnowflakeGenerator,
 };
 
-use super::{ company_job::CompanyJobQueries, company_member::CompanyMemberQueries };
+pub mod company_employee;
+pub mod company_location;
+pub mod company_onboarding_invite;
+pub mod location_department;
+pub mod department_role;
+
+// use super::{ company_job::CompanyJobQueries, company_member::CompanyMemberQueries };
 
 pub struct CompanyQueries {}
 
@@ -32,10 +36,9 @@ impl CompanyQueries {
                 company.id as id,
                 company.name as name,
                 company.description as description,
-                company.updated_at as updated_at,
-                company.is_active as is_active,
-                company.owner_id as owner_id,
                 company.icon as icon,
+                company.last_employee_id as last_employee_id,
+                company.owner_id as owner_id,
                 user.email as owner_email,
                 user.first_name as owner_first_name,
                 user.last_name as owner_last_name,
@@ -100,30 +103,30 @@ impl BasicQueries for CompanyQueries {
     }
 
     fn create_entity_postprocessor(
-        conn: &mut PooledConn,
-        snowflake_generator: Arc<SnowflakeGenerator>,
-        create_dto: Self::CreateDto,
+        _conn: &mut PooledConn,
+        _snowflake_generator: Arc<SnowflakeGenerator>,
+        _create_dto: Self::CreateDto,
         id: i64
     ) -> Result<i64> {
         let company_id = id;
 
-        let job_id = CompanyJobQueries::create_entity(
-            conn,
-            snowflake_generator.clone(),
-            RequestCreateCompanyJob {
-                company_id,
-                name: "Dummy".to_string(),
-                description: Some("Dummy for job placeholders".to_string()),
-                base_pay_rate: 0.0,
-                color: None,
-            }
-        )?;
+        // let job_id = CompanyJobQueries::create_entity(
+        //     conn,
+        //     snowflake_generator.clone(),
+        //     RequestCreateCompanyJob {
+        //         company_id,
+        //         name: "Dummy".to_string(),
+        //         description: Some("Dummy for job placeholders".to_string()),
+        //         base_pay_rate: 0.0,
+        //         color: None,
+        //     }
+        // )?;
 
-        let _ = CompanyMemberQueries::create_entity(conn, RequestCreateCompanyMember {
-            company_id,
-            user_id: create_dto.owner_id,
-            job_id,
-        })?;
+        // let _ = CompanyMemberQueries::create_entity(conn, RequestCreateCompanyMember {
+        //     company_id,
+        //     user_id: create_dto.owner_id,
+        //     job_id,
+        // })?;
 
         Ok(company_id)
     }
@@ -170,6 +173,7 @@ impl BasicQueries for CompanyQueries {
 mod tests {
     use crate::models::user::RequestCreateUser;
     use crate::queries::user::UserQueries;
+    use crate::snowflake::SnowflakeId;
     use crate::tests::{ initialize_test_db, cleanup_test_db };
 
     use super::*;
@@ -180,9 +184,23 @@ mod tests {
         // Setup database connection
         let pool = initialize_test_db()?;
         let mut conn = pool.get_conn()?;
+        conn.query_drop("USE worktest;")?;
 
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
+        create_users(&mut conn, Arc::clone(&snowflake_generator))?;
+        let company_id = create_company(&mut conn, Arc::clone(&snowflake_generator))?;
+
+        // Clean up: Drop the database
+        cleanup_test_db(conn)?;
+
+        Ok(())
+    }
+
+    fn create_users(
+        conn: &mut PooledConn,
+        snowflake_generator: Arc<SnowflakeGenerator>
+    ) -> Result<()> {
         let users = vec![
             RequestCreateUser {
                 email: "user1@email.com".to_string(),
@@ -206,7 +224,7 @@ mod tests {
             .filter_map(|user| {
                 if
                     let Some(user_id) = UserQueries::create_entity(
-                        &mut conn,
+                        conn,
                         snowflake_generator.clone(),
                         user.clone()
                     ).ok()
@@ -219,33 +237,35 @@ mod tests {
             .collect::<Vec<i64>>();
 
         assert_eq!(user_ids.len(), users.len());
+        Ok(())
+    }
 
-        let owner_user_id = user_ids[0];
+    fn create_company(
+        conn: &mut PooledConn,
+        snowflake_generator: Arc<SnowflakeGenerator>
+    ) -> Result<SnowflakeId> {
+        let users = UserQueries::find_all(conn)?;
 
-        // Create an company with the dummy user as owner
-        let company_id: i64 = CompanyQueries::create_entity(
-            &mut conn,
+        // Create an company with the one of the created user as owner
+        let company_id = CompanyQueries::create_entity(
+            conn,
             snowflake_generator.clone(),
             RequestCreateCompany {
                 name: "Dummy Company".to_string(),
                 description: Some("A test company".to_string()),
-                owner_id: owner_user_id,
+                owner_id: users[0].id,
                 timezone: None,
                 icon: None,
             }
         )?;
 
         // Assert that the company is linked to the owner
-        let company = CompanyQueries::find_by_id_with_owner(&mut conn, company_id)?;
+        let company = CompanyQueries::find_by_id_with_owner(conn, company_id)?;
 
         assert_eq!(company.id, company_id);
-        assert_eq!(company.owner_id, owner_user_id);
+        assert_eq!(company.owner_id, users[0].id);
         assert_eq!(company.name, "Dummy Company".to_string());
         assert_eq!(company.description, Some("A test company".to_string()));
-
-        // Clean up: Drop the database
-        cleanup_test_db(conn)?;
-
-        Ok(())
+        Ok(company_id)
     }
 }

@@ -184,6 +184,7 @@ mod test {
         // Setup database connection
         let pool = initialize_test_db()?;
         let mut conn = pool.get_conn()?;
+        conn.query_drop("USE worktest;")?;
         let snowflake_generator = Arc::new(SnowflakeGenerator::new(1));
 
         let users = vec![

@@ -20,7 +20,7 @@ pub fn create_users_table_query() -> String {
         phone_number VARCHAR(20) NULL UNIQUE,
         avatar VARCHAR(255) NULL,
         is_active BOOLEAN NOT NULL DEFAULT TRUE,
-        deleted_at TIMESTAMP NULL,
+        deleted_at TIMESTAMP NULL
     );
     ".to_string()
 }

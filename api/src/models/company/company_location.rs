@@ -24,7 +24,7 @@ pub struct CompanyLocation {
     pub id: SnowflakeId,
     pub company_id: SnowflakeId,
     pub name: String,
-    pub time_zone: String,
+    pub timezone: String,
     pub address: String,
     pub is_active: bool,
 }
@@ -35,7 +35,7 @@ impl FromRow for CompanyLocation {
             id: row.get("id").ok_or(FromRowError(row.clone()))?,
             company_id: row.get("company_id").ok_or(FromRowError(row.clone()))?,
             name: row.get("name").ok_or(FromRowError(row.clone()))?,
-            time_zone: row.get("time_zone").ok_or(FromRowError(row.clone()))?,
+            timezone: row.get("timezone").ok_or(FromRowError(row.clone()))?,
             address: row.get("address").ok_or(FromRowError(row.clone()))?,
             is_active: row.get("is_active").ok_or(FromRowError(row.clone()))?,
         })
@@ -46,14 +46,15 @@ impl FromRow for CompanyLocation {
 pub struct RequestCreateCompanyLocation {
     pub company_id: SnowflakeId,
     pub name: String,
-    pub time_zone: String,
+    pub timezone: String,
+    pub address: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RequestUpdateCompanyLocation {
-    pub id: SnowflakeId,
+    // pub id: SnowflakeId,
     pub name: Option<String>,
-    pub time_zone: Option<String>,
+    pub timezone: Option<String>,
     pub address: Option<String>,
     pub is_active: Option<bool>,
 }

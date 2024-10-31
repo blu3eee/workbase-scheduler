@@ -20,7 +20,7 @@ pub fn create_company_onboarding_invites_table_query() -> String {
         status ENUM('PENDING', 'CANCELLED', 'APPROVED', 'DENIED') NOT NULL DEFAULT 'PENDING',
         FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
         FOREIGN KEY (location_id) REFERENCES company_locations(id) ON DELETE CASCADE,
-        FOREIGN KEY (role_id) REFERENCES department_roles(id) ON DELETE SET NULL,
+        FOREIGN KEY (role_id) REFERENCES department_roles(id) ON DELETE SET NULL
     );
     ".to_string()
 }
@@ -62,9 +62,5 @@ pub struct RequestCreateCompanyOnboardingInvite {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RequestUpdateCompanyOnboardingInvite {
-    pub id: SnowflakeId,
-    pub name: Option<String>,
-    pub time_zone: Option<String>,
-    pub address: Option<String>,
-    pub is_active: Option<bool>,
+    pub status: Option<GeneralStatus>,
 }

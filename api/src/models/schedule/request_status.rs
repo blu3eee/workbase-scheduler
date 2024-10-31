@@ -2,8 +2,9 @@ use std::str::FromStr;
 
 use serde::{ Serialize, Deserialize };
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum GeneralStatus {
+    #[default]
     PENDING,
     CANCELLED,
     DECLINED,

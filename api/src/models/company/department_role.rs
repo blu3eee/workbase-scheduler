@@ -43,7 +43,7 @@ impl FromRow for DepartmentRole {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct RequestCreateDepartmentRole {
-    pub location_id: SnowflakeId,
+    pub department_id: SnowflakeId,
     pub name: String,
     pub wage: f32,
 }

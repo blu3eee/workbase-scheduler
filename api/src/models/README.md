@@ -29,7 +29,6 @@ CREATE TABLE IF NOT EXISTS company_employees (
     hired_date DATE NOT NULL DEFAULT (CURRENT_DATE),
     punch_id INT NOT NULL,
     notes TEXT,
-    user_type INT NOT NULL,
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
     UNIQUE KEY company_emp (user_id, company_id)
@@ -43,6 +42,19 @@ CREATE TABLE IF NOT EXISTS company_locations (
     address TEXT NOT NULL,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+);
+
+CREATE TABLE IF NOT EXISTS company_onboarding_invites (
+    id BIGINT NOT NULL PRIMARY KEY,
+    company_id BIGINT NOT NULL,
+    location_id BIGINT NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    role_id BIGINT,
+    status ENUM('PENDING', 'CANCELLED', 'APPROVED', 'DENIED') NOT NULL DEFAULT 'PENDING',
+    FOREIGN KEY (company_id) REFERENCES companies(id) ON DELETE CASCADE,
+    FOREIGN KEY (location_id) REFERENCES company_locations(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES department_roles(id) ON DELETE SET NULL,
 );
 
 CREATE TABLE IF NOT EXISTS location_departments (
@@ -59,8 +71,37 @@ CREATE TABLE IF NOT EXISTS department_roles (
     name VARCHAR(100) NOT NULL,
     wage FLOAT NOT NULL,
     color VARCHAR(6) NOT NULL DEFAULT FFFFFF,
-    active BOOLEAN NOT NULL DEFAULT TRUE,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
     FOREIGN KEY (department_id) REFERENCES location_departments(id) ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS location_holiday_settings (
+    id BIGINT NOT NULL PRIMARY KEY,
+    location_id BIGINT NOT NULL,
+    holiday DATE NOT NULL,
+    is_closed BOOLEAN NOT NULL DEFAULT TRUE,
+    factor FLOAT,
+    open_time TIME,
+    close_time TIME,
+    FOREIGN KEY (location_id) REFERENCES company_locations(id) ON DELETE CASCADE,
+    UNIQUE KEY location_holiday_setting (location_id, holiday)
+);
+
+CREATE TABLE IF NOT EXISTS location_operation_hours (
+    id BIGINT NOT NULL PRIMARY KEY,
+    location_id BIGINT NOT NULL,
+    day_of_week ENUM('MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY') NOT NULL,
+    is_closed BOOLEAN NOT NULL DEFAULT TRUE,
+    open_time TIME,
+    close_time TIME,
+    FOREIGN KEY (location_id) REFERENCES company_locations(id) ON DELETE CASCADE,
+    UNIQUE KEY daily_operation_hour (location_id, day_of_week)
+);
+
+CREATE TABLE IF NOT EXISTS location_shift_feedback_settings (
+    location_id BIGINT NOT NULL PRIMARY KEY,
+    enabled BOOLEAN NOT NULL DEFAULT FALSE,
+    FOREIGN KEY (location_id) REFERENCES company_locations(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS department_role_stations (
